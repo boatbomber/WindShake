@@ -6,7 +6,10 @@ High performance wind effect for leaves and foliage
 
 I wanted to have massive forests full of moving leaves. Not for any project of mine, I just wanted to make it cuz it sounded like fun. So I did. And now you guys benefit!
 
-This module handled 77,750 leaf meshes while the game ran at over 400 FPS on my machine. It's pretty darn fast, all things considered.
+This module handled 77,750+ leaf meshes while the game ran at over 400 FPS on my machine. It's pretty darn fast, all things considered.
+
+Demo:
+https://www.youtube.com/watch?v=WdJr7k9Uqfw
 
 -----
 
