@@ -3,6 +3,8 @@
 WindShake- High performance wind effect for leaves and foliage
 by boatbomber
 
+Docs: https://devforum.roblox.com/t/wind-shake-high-performance-wind-effect-for-leaves-and-foliage/1039806/1
+
 --]=]
 
 local UPDATE_HZ = 1/30 -- Update the objects at 30 Hz
