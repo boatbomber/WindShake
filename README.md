@@ -40,7 +40,23 @@ function WindShake:Init()
 ```Lua
 function WindShake:Cleanup()
 ```
-*Halts and clears the wind shake logic*
+*Halts and clears the wind shake logic and all object shakes*
+
+**Returns:**  
+* `void`
+
+```Lua
+function WindShake:Pause()
+```
+*Halts the wind shake logic without clearing*
+
+**Returns:**  
+* `void`
+
+```Lua
+function WindShake:Resume()
+```
+*Restarts the wind shake logic without clearing*
 
 **Returns:**  
 * `void`

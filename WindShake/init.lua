@@ -50,15 +50,7 @@ end
 function module:Init()
 	
 	-- Clear any old stuff
-	if module.UpdateConnection then
-		module.UpdateConnection:Disconnect()
-		module.UpdateConnection = nil
-	end
-	table.clear(module.ObjectMetadata)
-	module.Octree:ClearNodes()
-	
-	module.Handled = 0
-	module.Active = 0
+	module:Cleanup()
 	
 	-- Connect updater
 	local LastUpdate = os.clock()
@@ -102,6 +94,57 @@ function module:Init()
 	
 end
 
+function module:Pause()
+	if module.UpdateConnection then
+		module.UpdateConnection:Disconnect()
+		module.UpdateConnection = nil
+	end
+	module.Active = 0
+end
+
+function module:Resume()
+	module:Pause()
+	
+	-- Connect updater
+	local LastUpdate = os.clock()
+	module.UpdateConnection = RunService.Heartbeat:Connect(function()
+		local Clock = os.clock()
+		if Clock-LastUpdate >= UPDATE_HZ then
+			LastUpdate = Clock
+			
+			debug.profilebegin("WindShake")
+			
+			local UpdateObjects = module.Octree:RadiusSearch((Camera.CFrame*CFrame.new(0,0,-115)).Position, 120)
+			
+			local ActiveCount = #UpdateObjects
+			module.Active = ActiveCount
+			
+			if ActiveCount < 1 then return end
+			
+			local CFrames = table.create(ActiveCount)
+
+			for Index, Object in ipairs(UpdateObjects) do
+				local ObjMeta = module.ObjectMetadata[Object]
+				local CF,Seed,Speed,Direction,Power = ObjMeta.CF,ObjMeta.Seed,ObjMeta.Speed,ObjMeta.Direction,ObjMeta.Power
+				
+				local Amp = math.abs(Power*0.1)
+				local Freq = Clock*(Speed*0.08)
+
+				CFrames[Index] = (CF * CFrame.Angles(
+					-- Rotation
+					math.noise(Freq,0,Seed)*Amp,
+					math.noise(Freq,0,Seed)*Amp,
+					math.noise(Freq,0,Seed)*Amp
+				)) + ( -- Wind Direction
+					Direction * (math.noise(Freq,Seed,Seed)+0.5)*(Amp)
+				)
+			end
+
+			workspace:BulkMoveTo(UpdateObjects,CFrames,Enum.BulkMoveMode.FireCFrameChanged)
+			debug.profileend()
+		end
+	end)
+end
 
 function module:SetDefaultSettings(Settings)
 	if not type(Settings) == "table" then return end
