@@ -20,9 +20,9 @@ local UPDATE_HZ = 1/30 -- Update the object targets at 30 Hz.
 -- are undefined or using the wrong value types.
 
 local DEFAULT_SETTINGS = Settings.new(script, {
-	Direction = Vector3.new(0.5, 0, 0.5);
-	Speed = 20;
-	Power = 0.5;
+	WindDirection = Vector3.new(0.5, 0, 0.5);
+	WindSpeed = 20;
+	WindPower = 0.5;
 })
 
 -----------------------------------------------------------------------------------------------------------------
@@ -35,10 +35,23 @@ local WindShake = {
 	Active = 0;
 }
 
+local function validateKey(key)
+	if not string.match(key, "^Wind") then
+		warn("[WINDSHAKE] Setting "..key.." is deprecated. Use Wind"..key.." instead, as "..key.." WILL NOT be supported in future versions!")
+		key = "Wind"..key
+	end
+	return key
+end
+
 export type WindShakeSettings = {
+	WindDirection: Vector3?,
+	WindSpeed: number?,
+	WindPower: number?
+
+	-- Deprecated Names (Will become unsupported in future versions)
 	Direction: Vector3?,
 	Speed: number?,
-	Power: number?
+	Power: number?,
 }
 
 function WindShake:Connect(funcName: string, event: RBXScriptSignal): RBXScriptConnection
@@ -128,12 +141,12 @@ function WindShake:Update(dt)
 			local objSettings = objMeta.Settings
 
 			local seed = objMeta.Seed
-			local amp = math.abs(objSettings.Power * 0.1)
+			local amp = math.abs(objSettings.WindPower * 0.1)
 
-			local freq = now * (objSettings.Speed * 0.08)
+			local freq = now * (objSettings.WindSpeed * 0.08)
 			local rot = math.noise(freq, 0, seed) * amp
 
-			objMeta.Target = origin * CFrame.Angles(rot, rot, rot) + objSettings.Direction * ((0.5 + math.noise(freq, seed, seed)) * amp)
+			objMeta.Target = origin * CFrame.Angles(rot, rot, rot) + objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)
 
 			objMeta.LastCompute = now
 		end
@@ -251,6 +264,7 @@ function WindShake:UpdateObjectSettings(object: Instance, settingsTable: WindSha
 	end
 
 	for key, value in pairs(settingsTable) do
+		key = validateKey(key)
 		object:SetAttribute(key, value)
 	end
 end
@@ -264,6 +278,7 @@ function WindShake:UpdateAllObjectSettings(settingsTable: WindShakeSettings)
 		local objSettings = objMeta.Settings
 
 		for key, value in pairs(settingsTable) do
+			key = validateKey(key)
 			objSettings[key] = value
 		end
 	end
