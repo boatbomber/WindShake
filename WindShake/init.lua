@@ -87,6 +87,7 @@ function WindShake:RemoveObjectShake(object: BasePart)
 	local objMeta = metadata[object]
 
 	if objMeta then
+		self.Handled -= 1
 		metadata[object] = nil
 		objMeta.Node:Destroy()
 
@@ -226,7 +227,11 @@ function WindShake:Cleanup()
 		self.RemovedConnection = nil
 	end
 
+	table.clear(self.ObjectMetadata)
+	self.Octree:ClearNodes()
+
 	self.Handled = 0
+	self.Active = 0
 	self.Initialized = false
 end
 
