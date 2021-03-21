@@ -1,199 +1,276 @@
 --[=[
 
 WindShake- High performance wind effect for leaves and foliage
-by boatbomber
+by: boatbomber, CloneTrooper1019
 
 Docs: https://devforum.roblox.com/t/wind-shake-high-performance-wind-effect-for-leaves-and-foliage/1039806/1
 
 --]=]
 
-local UPDATE_HZ = 1/30 -- Update the objects at 30 Hz
+local CollectionService = game:GetService("CollectionService")
+local RunService = game:GetService("RunService")
+local Settings = require(script.Settings)
+local Octree = require(script.Octree)
 
-local DEFAULT_SETTINGS = {
-	Direction = Vector3.new(0.5,0,0.5);
+local UPDATE_HZ = 1/30 -- Update the object targets at 30 Hz.
+
+-- Use the script's attributes as the default settings.
+-- The table provided is a fallback if the attributes
+-- are undefined or using the wrong value types.
+
+local DEFAULT_SETTINGS = Settings.new(script,
+{
+	Direction = Vector3.new(0.5, 0, 0.5);
 	Speed = 20;
 	Power = 0.5;
-}
+})
 
+-----------------------------------------------------------------------------------------------------------------
 
----------------------------------------------------------------------------------
-
-
-local RunService = game:GetService("RunService")
-local OctreeModule = require(script.Octree)
-local Camera = workspace.CurrentCamera
-
-local module = {
+local WindShake =
+{
 	ObjectMetadata = {};
-	Octree = OctreeModule.new();
-	Active = 0;
+	Octree = Octree.new();
+
 	Handled = 0;
+	Active = 0;
 }
 
-function module:AddObjectShake(Object, Settings)
-	Settings = type(Settings) == "table" and Settings or DEFAULT_SETTINGS
+export type WindShakeSettings =
+{
+	Direction: Vector3?,
+	Speed: number?,
+	Power: number?
+}
 
-	module.Handled += 1
+function WindShake:Connect(funcName: string, event: RBXScriptSignal): RBXScriptConnection
+	local callback = self[funcName]
+	assert(typeof(callback) == "function", "Unknown function: " .. funcName)
 
-	module.ObjectMetadata[Object] = {
-		CF = Object.CFrame;
-		Seed = math.random(1000)*0.1;
+	return event:Connect(function (...)
+		return callback(self, ...)
+	end)
+end
 
-		Speed = Settings.Speed or DEFAULT_SETTINGS.Speed;
-		Direction = Settings.Direction or DEFAULT_SETTINGS.Direction;
-		Power = Settings.Power or DEFAULT_SETTINGS.Power;
+function WindShake:AddObjectShake(object: BasePart, settingsTable: WindShakeSettings?)
+	if typeof(object) ~= "Instance" then
+		return
+	end
+
+	if not object:IsA("BasePart") then
+		return
+	end
+
+	local metadata = self.ObjectMetadata
+
+	if metadata[object] then
+		return
+	else
+		self.Handled += 1
+	end
+
+	metadata[object] =
+	{
+		Node = self.Octree:CreateNode(object.Position, object);
+		Settings = Settings.new(object, DEFAULT_SETTINGS);
+
+		Seed = math.random(1000) * 0.1;
+		Origin = object.CFrame;
 	}
-	module.Octree:CreateNode(Object.Position,Object)
 
+	self:UpdateObjectSettings(object, settingsTable)
 end
 
-function module:Init()
-	
-	-- Clear any old stuff
-	module:Cleanup()
-	
+function WindShake:RemoveObjectShake(object: BasePart)
+	if typeof(object) ~= "Instance" then
+		return
+	end
+
+	local metadata = self.ObjectMetadata
+	local objMeta = metadata[object]
+
+	if objMeta then
+		metadata[object] = nil
+		objMeta.Node:Destroy()
+
+		if object:IsA("BasePart") then
+			object.CFrame = objMeta.Origin
+		end
+	end
+end
+
+function WindShake:Update(dt)
+	local now = os.clock()
+	debug.profilebegin("WindShake")
+
+	local camera = workspace.CurrentCamera
+	local cameraCF = camera and camera.CFrame
+
+	local updateObjects = self.Octree:RadiusSearch(cameraCF.Position + (cameraCF.LookVector * 115), 120)
+	local activeCount = #updateObjects
+
+	self.Active = activeCount
+
+	if self.Active < 1 then
+		return
+	end
+
+	local step = math.min(1, dt * 8)
+	local cfTable = table.create(activeCount)
+	local objectMetadata = self.ObjectMetadata
+
+	for i, object in ipairs(updateObjects) do
+		local objMeta = objectMetadata[object]
+		local lastComp = objMeta.LastCompute or 0
+
+		local origin = objMeta.Origin
+		local current = objMeta.CFrame or origin
+
+		if (now - lastComp) > UPDATE_HZ then
+			local objSettings = objMeta.Settings
+
+			local seed = objMeta.Seed
+			local amp = math.abs(objSettings.Power * 0.1)
+
+			local freq = now * (objSettings.Speed * 0.08)
+			local rot = math.noise(freq, 0, seed) * amp
+
+			objMeta.Target
+				= origin * CFrame.Angles(rot, rot, rot)
+				+ objSettings.Direction * ((0.5 + math.noise(freq, seed, seed)) * amp)
+
+			objMeta.LastCompute = now
+		end
+
+		current = current:Lerp(objMeta.Target, step)
+		objMeta.CFrame = current
+		cfTable[i] = current
+	end
+
+	workspace:BulkMoveTo(updateObjects, cfTable, Enum.BulkMoveMode.FireCFrameChanged)
+	debug.profileend()
+end
+
+function WindShake:Pause()
+	if self.UpdateConnection then
+		self.UpdateConnection:Disconnect()
+		self.UpdateConnection = nil
+	end
+
+	self.Active = 0
+	self.Running = false
+end
+
+function WindShake:Resume()
+	if self.Running then
+		return
+	else
+		self.Running = true
+	end
+
 	-- Connect updater
-	local LastUpdate = os.clock()
-	module.UpdateConnection = RunService.Heartbeat:Connect(function()
-		local Clock = os.clock()
-		if Clock-LastUpdate >= UPDATE_HZ then
-			LastUpdate = Clock
-			
-			debug.profilebegin("WindShake")
-			
-			local UpdateObjects = module.Octree:RadiusSearch((Camera.CFrame*CFrame.new(0,0,-115)).Position, 120)
-			
-			local ActiveCount = #UpdateObjects
-			module.Active = ActiveCount
-			
-			if ActiveCount < 1 then return end
-			
-			local CFrames = table.create(ActiveCount)
-
-			for Index, Object in ipairs(UpdateObjects) do
-				local ObjMeta = module.ObjectMetadata[Object]
-				local CF,Seed,Speed,Direction,Power = ObjMeta.CF,ObjMeta.Seed,ObjMeta.Speed,ObjMeta.Direction,ObjMeta.Power
-				
-				local Amp = math.abs(Power*0.1)
-				local Freq = Clock*(Speed*0.08)
-
-				CFrames[Index] = (CF * CFrame.Angles(
-					-- Rotation
-					math.noise(Freq,0,Seed)*Amp,
-					math.noise(Freq,0,Seed)*Amp,
-					math.noise(Freq,0,Seed)*Amp
-				)) + ( -- Wind Direction
-					Direction * (math.noise(Freq,Seed,Seed)+0.5)*(Amp)
-				)
-			end
-
-			workspace:BulkMoveTo(UpdateObjects,CFrames,Enum.BulkMoveMode.FireCFrameChanged)
-			debug.profileend()
-		end
-	end)
-	
+	self.UpdateConnection = self:Connect("Update", RunService.Heartbeat)
 end
 
-function module:Pause()
-	if module.UpdateConnection then
-		module.UpdateConnection:Disconnect()
-		module.UpdateConnection = nil
-	end
-	module.Active = 0
-end
-
-function module:Resume()
-	module:Pause()
-	
-	-- Connect updater
-	local LastUpdate = os.clock()
-	module.UpdateConnection = RunService.Heartbeat:Connect(function()
-		local Clock = os.clock()
-		if Clock-LastUpdate >= UPDATE_HZ then
-			LastUpdate = Clock
-			
-			debug.profilebegin("WindShake")
-			
-			local UpdateObjects = module.Octree:RadiusSearch((Camera.CFrame*CFrame.new(0,0,-115)).Position, 120)
-			
-			local ActiveCount = #UpdateObjects
-			module.Active = ActiveCount
-			
-			if ActiveCount < 1 then return end
-			
-			local CFrames = table.create(ActiveCount)
-
-			for Index, Object in ipairs(UpdateObjects) do
-				local ObjMeta = module.ObjectMetadata[Object]
-				local CF,Seed,Speed,Direction,Power = ObjMeta.CF,ObjMeta.Seed,ObjMeta.Speed,ObjMeta.Direction,ObjMeta.Power
-				
-				local Amp = math.abs(Power*0.1)
-				local Freq = Clock*(Speed*0.08)
-
-				CFrames[Index] = (CF * CFrame.Angles(
-					-- Rotation
-					math.noise(Freq,0,Seed)*Amp,
-					math.noise(Freq,0,Seed)*Amp,
-					math.noise(Freq,0,Seed)*Amp
-				)) + ( -- Wind Direction
-					Direction * (math.noise(Freq,Seed,Seed)+0.5)*(Amp)
-				)
-			end
-
-			workspace:BulkMoveTo(UpdateObjects,CFrames,Enum.BulkMoveMode.FireCFrameChanged)
-			debug.profileend()
-		end
-	end)
-end
-
-function module:SetDefaultSettings(Settings)
-	if not type(Settings) == "table" then return end
-	
-	-- Apply settings
-	for Key,Value in pairs(Settings) do
-		DEFAULT_SETTINGS[Key] = Value
-	end
-	
-end
-
-function module:UpdateObjectSettings(Object, Settings)
-	if not type(Settings) == "table" then return end
-	
-	local ObjMeta = module.ObjectMetadata[Object]
-	if not ObjMeta then return end
-
-	-- Apply settings
-	for Key,Value in pairs(Settings) do
-		ObjMeta[Key] = Value
+function WindShake:Init()
+	if self.Initialized then
+		return
+	else
+		self.Initialized = true
 	end
 
+	-- Define attributes if they're undefined.
+	local power = script:GetAttribute("Power")
+	local speed = script:GetAttribute("Speed")
+	local direction = script:GetAttribute("Direction")
+
+	if typeof(power) ~= "number" then
+		script:SetAttribute("Power", DEFAULT_SETTINGS.Power)
+	end
+
+	if typeof(speed) ~= "number" then
+		script:SetAttribute("Speed", DEFAULT_SETTINGS.Speed)
+	end
+
+	if typeof(direction) ~= "number" then
+		script:SetAttribute("Direction", DEFAULT_SETTINGS.Direction)
+	end
+	
+	-- Clear any old stuff.
+	self:Cleanup()
+
+	-- Wire up tag listeners.
+	local windShakeAdded = CollectionService:GetInstanceAddedSignal("WindShake")
+	self.AddedConnection = self:Connect("AddObjectShake", windShakeAdded)
+
+	local windShakeRemoved = CollectionService:GetInstanceRemovedSignal("WindShake")
+	self.RemovedConnection = self:Connect("RemoveObjectShake", windShakeRemoved)
+
+	for _,object in pairs(CollectionService:GetTagged("WindShake")) do
+		self:AddObjectShake(object)
+	end
+
+	-- Automatically start.
+	self:Resume()
 end
 
-function module:UpdateAllObjectSettings(Settings)
-	if not type(Settings) == "table" then return end
+function WindShake:Cleanup()
+	if not self.Initialized then
+		return
+	end
 
-	for Obj, ObjMeta in pairs(module.ObjectMetadata) do
-		-- Apply settings
-		for Key,Value in pairs(Settings) do
-			ObjMeta[Key] = Value
+	self:Pause()
+
+	if self.AddedConnection then
+		self.AddedConnection:Disconnect()
+		self.AddedConnection = nil
+	end
+
+	if self.RemovedConnection then
+		self.RemovedConnection:Disconnect()
+		self.RemovedConnection = nil
+	end
+
+	self.Handled = 0
+	self.Initialized = false
+end
+
+function WindShake:UpdateObjectSettings(object: Instance, settingsTable: WindShakeSettings)
+	if typeof(object) ~= "Instance" then
+		return
+	end
+
+	if typeof(settingsTable) ~= "table" then
+		return
+	end
+
+	if not self.ObjectMetadata[object] then
+		if object ~= script then
+			return
 		end
 	end
-	
+
+	for key, value in pairs(settingsTable) do
+		object:SetAttribute(key, value)
+	end
 end
 
-function module:Cleanup()
-	
-	if module.UpdateConnection then
-		module.UpdateConnection:Disconnect()
-		module.UpdateConnection = nil
+function WindShake:UpdateAllObjectSettings(settingsTable: WindShakeSettings)
+	if typeof(settingsTable) ~= "table" then
+		return
 	end
 
-	table.clear(module.ObjectMetadata)
+	for obj, objMeta in pairs(self.ObjectMetadata) do
+		local objSettings = objMeta.Settings
 
-	module.Octree:ClearNodes()
-	
-	module.Handled = 0
-	module.Active = 0
+		for key, value in pairs(settingsTable) do
+			objSettings[key] = value
+		end
+	end
 end
 
-return module
+function WindShake:SetDefaultSettings(settingsTable: WindShakeSettings)
+	self:UpdateObjectSettings(script, settingsTable)
+end
+
+return WindShake
