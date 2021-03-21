@@ -19,8 +19,7 @@ local UPDATE_HZ = 1/30 -- Update the object targets at 30 Hz.
 -- The table provided is a fallback if the attributes
 -- are undefined or using the wrong value types.
 
-local DEFAULT_SETTINGS = Settings.new(script,
-{
+local DEFAULT_SETTINGS = Settings.new(script, {
 	Direction = Vector3.new(0.5, 0, 0.5);
 	Speed = 20;
 	Power = 0.5;
