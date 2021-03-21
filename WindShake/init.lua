@@ -46,7 +46,7 @@ end
 export type WindShakeSettings = {
 	WindDirection: Vector3?,
 	WindSpeed: number?,
-	WindPower: number?
+	WindPower: number?,
 
 	-- Deprecated Names (Will become unsupported in future versions)
 	Direction: Vector3?,
