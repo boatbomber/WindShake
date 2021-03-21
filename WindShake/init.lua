@@ -12,6 +12,7 @@ local RunService = game:GetService("RunService")
 local Settings = require(script.Settings)
 local Octree = require(script.Octree)
 
+local COLLECTION_TAG = "WindShake" -- The CollectionService tag to be watched and mounted automatically
 local UPDATE_HZ = 1/30 -- Update the object targets at 30 Hz.
 
 -- Use the script's attributes as the default settings.
@@ -195,13 +196,13 @@ function WindShake:Init()
 	self:Cleanup()
 
 	-- Wire up tag listeners.
-	local windShakeAdded = CollectionService:GetInstanceAddedSignal("WindShake")
+	local windShakeAdded = CollectionService:GetInstanceAddedSignal(COLLECTION_TAG)
 	self.AddedConnection = self:Connect("AddObjectShake", windShakeAdded)
 
-	local windShakeRemoved = CollectionService:GetInstanceRemovedSignal("WindShake")
+	local windShakeRemoved = CollectionService:GetInstanceRemovedSignal(COLLECTION_TAG)
 	self.RemovedConnection = self:Connect("RemoveObjectShake", windShakeRemoved)
 
-	for _,object in pairs(CollectionService:GetTagged("WindShake")) do
+	for _,object in pairs(CollectionService:GetTagged(COLLECTION_TAG)) do
 		self:AddObjectShake(object)
 	end
 
