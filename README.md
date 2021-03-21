@@ -31,11 +31,10 @@ https://www.roblox.com/games/6342320514/Wind-Demo
 
 ## API:
 
-
 ```Lua
 function WindShake:Init()
 ```
-*Initializes the wind shake logic*
+*Initializes the wind shake logic and adds shake to all tagged objects*
 
 **Returns:**  
 * `void`
@@ -80,9 +79,24 @@ The settings to apply to this object's shake (See below for Settings structure)
 * `void`
 
 ```Lua
-function WindShake:SetDefaultSettings(Settings)
+function WindShake:RemoveObjectShake(Object)
 ```
+*Removes shake from an object*
+
+**Parameters:**
+- `Object` *[BasePart]*
+The Object to remove shaking from
+
+**Returns:**  
+* `void`
+
+```Lua
+function WindShake:SetDefaultSettings(Settings) [DEPRECATED]
+```
+> Deprecated in favor of setting the Attributes of the WindShake modulescript
+
 *Sets the default settings for future object shake additions*
+
 
 **Parameters:**
 
@@ -93,8 +107,10 @@ The settings to use as default (See below for Settings structure)
 * `void`
 
 ```Lua
-function WindShake:UpdateObjectSettings(Object, Settings)
+function WindShake:UpdateObjectSettings(Object, Settings) [DEPRECATED]
 ```
+> Deprecated in favor of setting the Attributes of the Object
+
 *Updates the shake settings of an object already added*
 
 **Parameters:**
@@ -124,17 +140,17 @@ The settings to apply to all objects' shake (See below for Settings structure)
 Settings
 ```
 
-`Settings` tables are structured like so:
+`Settings` tables are structured like so:
 
 ```Lua
 {
-    Direction: Vector3 to shake towards (Initially 0.5,0,0.5)
-    Speed: Positive number that defines how fast to shake (Initially 20)
-    Power: Positive number that defines how much to shake (Initially 0.5)
- 
-    --If one of these is not defined, it will use default for that one,
-    --so you can pass a table with just one or two settings and the rest
-    --will be default so you don't need to make the full table every time.
+    WindDirection: Vector3 to shake towards (Initially 0.5,0,0.5)
+    WindSpeed: Positive number that defines how fast to shake (Initially 20)
+    WindPower: Positive number that defines how much to shake (Initially 0.5)
+ 
+    --If one of these is not defined, it will use default for that one,
+    --so you can pass a table with just one or two settings and the rest
+    --will be default so you don't need to make the full table every time.
 }
 ```
 
@@ -149,18 +165,12 @@ local WIND_POWER = 0.4
 
 local WindShake = require(script.WindShake)
 
-WindShake:Init()
 WindShake:SetDefaultSettings({
-	Speed = WIND_SPEED;
-	Direction = WIND_DIRECTION;
-	Power = WIND_POWER;
+	WindSpeed = WIND_SPEED;
+	WindDirection = WIND_DIRECTION;
+	WindPower = WIND_POWER;
 })
 
-local Trees = workspace:WaitForChild("Trees")
+WindShake:Init() -- Anything with the WindShake tag will now shake
 
-for _, LeafBall in pairs(Trees:GetDescendants()) do
-	if LeafBall.Name == "LeafBall" then
-		WindShake:AddObjectShake(LeafBall)
-	end
-end
 ```
