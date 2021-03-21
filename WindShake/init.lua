@@ -27,8 +27,7 @@ local DEFAULT_SETTINGS = Settings.new(script,
 
 -----------------------------------------------------------------------------------------------------------------
 
-local WindShake =
-{
+local WindShake = {
 	ObjectMetadata = {};
 	Octree = Octree.new();
 
@@ -36,8 +35,7 @@ local WindShake =
 	Active = 0;
 }
 
-export type WindShakeSettings =
-{
+export type WindShakeSettings = {
 	Direction: Vector3?,
 	Speed: number?,
 	Power: number?
@@ -69,8 +67,7 @@ function WindShake:AddObjectShake(object: BasePart, settingsTable: WindShakeSett
 		self.Handled += 1
 	end
 
-	metadata[object] =
-	{
+	metadata[object] = {
 		Node = self.Octree:CreateNode(object.Position, object);
 		Settings = Settings.new(object, DEFAULT_SETTINGS);
 
@@ -135,9 +132,7 @@ function WindShake:Update(dt)
 			local freq = now * (objSettings.Speed * 0.08)
 			local rot = math.noise(freq, 0, seed) * amp
 
-			objMeta.Target
-				= origin * CFrame.Angles(rot, rot, rot)
-				+ objSettings.Direction * ((0.5 + math.noise(freq, seed, seed)) * amp)
+			objMeta.Target = origin * CFrame.Angles(rot, rot, rot) + objSettings.Direction * ((0.5 + math.noise(freq, seed, seed)) * amp)
 
 			objMeta.LastCompute = now
 		end

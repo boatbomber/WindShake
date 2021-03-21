@@ -1,8 +1,7 @@
 local Settings = {}
 
 function Settings.new(object, base)
-	local inst = 
-	{
+	local inst = {
 		_object = object;
 		_base = base;
 	}
@@ -15,8 +14,8 @@ function Settings:__index(key)
 	local base = self._base
 	
 	if base ~= nil then
-        base = base[key]
-        
+		base = base[key]
+
 		if typeof(result) ~= typeof(base) then
 			result = base
 		end
