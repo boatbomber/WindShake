@@ -189,20 +189,20 @@ function WindShake:Init()
 	end
 
 	-- Define attributes if they're undefined.
-	local power = script:GetAttribute("Power")
-	local speed = script:GetAttribute("Speed")
-	local direction = script:GetAttribute("Direction")
+	local power = script:GetAttribute("WindPower")
+	local speed = script:GetAttribute("WindSpeed")
+	local direction = script:GetAttribute("WindDirection")
 
 	if typeof(power) ~= "number" then
-		script:SetAttribute("Power", DEFAULT_SETTINGS.Power)
+		script:SetAttribute("WindPower", DEFAULT_SETTINGS.WindPower)
 	end
 
 	if typeof(speed) ~= "number" then
-		script:SetAttribute("Speed", DEFAULT_SETTINGS.Speed)
+		script:SetAttribute("WindSpeed", DEFAULT_SETTINGS.WindSpeed)
 	end
 
-	if typeof(direction) ~= "number" then
-		script:SetAttribute("Direction", DEFAULT_SETTINGS.Direction)
+	if typeof(direction) ~= "Vector3" then
+		script:SetAttribute("WindDirection", DEFAULT_SETTINGS.WindDirection)
 	end
 	
 	-- Clear any old stuff.
