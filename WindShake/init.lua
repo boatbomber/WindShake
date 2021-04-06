@@ -27,31 +27,31 @@ local DEFAULT_SETTINGS = Settings.new(script, {
 
 -----------------------------------------------------------------------------------------------------------------
 
+local ObjectShakeAddedEvent = Instance.new("BindableEvent")
+local ObjectShakeRemovedEvent = Instance.new("BindableEvent")
+local ObjectShakeUpdatedEvent = Instance.new("BindableEvent")
+local PausedEvent = Instance.new("BindableEvent")
+local ResumedEvent = Instance.new("BindableEvent")
+
 local WindShake = {
 	ObjectMetadata = {};
 	Octree = Octree.new();
 
 	Handled = 0;
 	Active = 0;
-}
 
-local function validateKey(key)
-	if not string.match(key, "^Wind") then
-		warn("[WINDSHAKE] Setting "..key.." is deprecated. Use Wind"..key.." instead, as "..key.." WILL NOT be supported in future versions!")
-		key = "Wind"..key
-	end
-	return key
-end
+	ObjectShakeAdded = ObjectShakeAddedEvent.Event;
+	ObjectShakeRemoved = ObjectShakeRemovedEvent.Event;
+	ObjectShakeUpdated = ObjectShakeUpdatedEvent.Event;
+	Paused = PausedEvent.Event;
+	Resumed = ResumedEvent.Event;
+
+}
 
 export type WindShakeSettings = {
 	WindDirection: Vector3?,
 	WindSpeed: number?,
 	WindPower: number?,
-
-	-- Deprecated Names (Will become unsupported in future versions)
-	Direction: Vector3?,
-	Speed: number?,
-	Power: number?,
 }
 
 function WindShake:Connect(funcName: string, event: RBXScriptSignal): RBXScriptConnection
@@ -89,6 +89,8 @@ function WindShake:AddObjectShake(object: BasePart, settingsTable: WindShakeSett
 	}
 
 	self:UpdateObjectSettings(object, settingsTable)
+
+	ObjectShakeAddedEvent:Fire(object)
 end
 
 function WindShake:RemoveObjectShake(object: BasePart)
@@ -108,6 +110,8 @@ function WindShake:RemoveObjectShake(object: BasePart)
 			object.CFrame = objMeta.Origin
 		end
 	end
+
+	ObjectShakeRemovedEvent:Fire(object)
 end
 
 function WindShake:Update(dt)
@@ -168,6 +172,8 @@ function WindShake:Pause()
 
 	self.Active = 0
 	self.Running = false
+
+	PausedEvent:Fire()
 end
 
 function WindShake:Resume()
@@ -179,6 +185,8 @@ function WindShake:Resume()
 
 	-- Connect updater
 	self.UpdateConnection = self:Connect("Update", RunService.Heartbeat)
+
+	ResumedEvent:Fire()
 end
 
 function WindShake:Init()
@@ -264,9 +272,10 @@ function WindShake:UpdateObjectSettings(object: Instance, settingsTable: WindSha
 	end
 
 	for key, value in pairs(settingsTable) do
-		key = validateKey(key)
 		object:SetAttribute(key, value)
 	end
+
+	ObjectShakeUpdatedEvent:Fire(object)
 end
 
 function WindShake:UpdateAllObjectSettings(settingsTable: WindShakeSettings)
@@ -278,9 +287,9 @@ function WindShake:UpdateAllObjectSettings(settingsTable: WindShakeSettings)
 		local objSettings = objMeta.Settings
 
 		for key, value in pairs(settingsTable) do
-			key = validateKey(key)
 			objSettings[key] = value
 		end
+		ObjectShakeUpdatedEvent:Fire(obj)
 	end
 end
 
