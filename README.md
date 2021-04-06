@@ -13,7 +13,7 @@ https://www.youtube.com/watch?v=WdJr7k9Uqfw
 
 -----
 
-## Source:
+# Source:
 
 **GitHub:**
 
@@ -29,7 +29,9 @@ https://www.roblox.com/games/6342320514/Wind-Demo
 
 -----
 
-## API:
+# API:
+
+## Functions
 
 ```Lua
 function WindShake:Init()
@@ -136,14 +138,52 @@ The settings to apply to all objects' shake (See below for Settings structure)
 **Returns:**  
 * `void`
 
+## Events
+
 ```Lua
-Settings
+RBXScriptSignal WindShake.ObjectShakeAdded(Object)
 ```
+*Fires when an object is added to WindShake*
 
-`Settings` tables are structured like so:
+**Parameters:**
+
+- `Object` *[BasePart]*
+The object that was added
 
 ```Lua
-{
+RBXScriptSignal WindShake.ObjectShakeRemoved(Object)
+```
+*Fires when an object is removed from WindShake*
+
+**Parameters:**
+
+- `Object` *[BasePart]*
+The object that was removed
+
+```Lua
+RBXScriptSignal WindShake.ObjectShakeUpdated(Object)
+```
+*Fires when an object's settings are updated through the update APIs*
+
+**Parameters:**
+
+- `Object` *[BasePart]*
+The object that had its settings updated
+
+```Lua
+RBXScriptSignal WindShake.Resumed()
+```
+*Fires when WindShake begins shaking the objects*
+
+```Lua
+RBXScriptSignal WindShake.Paused()
+```
+*Fires when WindShake stops shaking the objects*
+
+## Types
+
+```Lua
+Settings = {
     WindDirection: Vector3 to shake towards (Initially 0.5,0,0.5)
     WindSpeed: Positive number that defines how fast to shake (Initially 20)
     WindPower: Positive number that defines how much to shake (Initially 0.5)
@@ -156,7 +196,7 @@ Settings
 
 -----
 
-## Usage Example:
+# Usage Example:
 
 ```Lua
 local WIND_DIRECTION = Vector3.new(1,0,0.3)
