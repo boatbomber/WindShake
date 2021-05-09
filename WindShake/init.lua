@@ -121,12 +121,15 @@ function WindShake:Update(dt)
 	local camera = workspace.CurrentCamera
 	local cameraCF = camera and camera.CFrame
 
+	debug.profilebegin("Octree Search")
 	local updateObjects = self.Octree:RadiusSearch(cameraCF.Position + (cameraCF.LookVector * 115), 120)
+	debug.profileend()
+
 	local activeCount = #updateObjects
 
 	self.Active = activeCount
 
-	if self.Active < 1 then
+	if activeCount < 1 then
 		return
 	end
 
@@ -134,6 +137,7 @@ function WindShake:Update(dt)
 	local cfTable = table.create(activeCount)
 	local objectMetadata = self.ObjectMetadata
 
+	debug.profilebegin("Calc")
 	for i, object in ipairs(updateObjects) do
 		local objMeta = objectMetadata[object]
 		local lastComp = objMeta.LastCompute or 0
@@ -163,6 +167,7 @@ function WindShake:Update(dt)
 		objMeta.CFrame = current
 		cfTable[i] = current
 	end
+	debug.profileend()
 
 	workspace:BulkMoveTo(updateObjects, cfTable, Enum.BulkMoveMode.FireCFrameChanged)
 	debug.profileend()
