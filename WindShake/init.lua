@@ -104,6 +104,7 @@ function WindShake:RemoveObjectShake(object: BasePart)
 	if objMeta then
 		self.Handled -= 1
 		metadata[object] = nil
+		objMeta.Settings:Destroy()
 		objMeta.Node:Destroy()
 
 		if object:IsA("BasePart") then
