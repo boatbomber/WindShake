@@ -148,9 +148,13 @@ function WindShake:Update(dt)
 			local amp = math.abs(objSettings.WindPower * 0.1)
 
 			local freq = now * (objSettings.WindSpeed * 0.08)
-			local rot = math.noise(freq, 0, seed) * amp
+			local rotX = math.noise(freq, 0, seed) * amp
+			local rotY = math.noise(freq, 0, -seed) * amp
+			local rotZ = math.noise(freq, 0, seed+seed) * amp
+			local offset = object.PivotOffset
+			local worldpivot = origin * offset
 
-			objMeta.Target = origin * CFrame.Angles(rot, rot, rot) + objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)
+			objMeta.Target = (worldpivot * CFrame.Angles(rotX, rotY, rotZ) + objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)) * offset:Inverse()
 
 			objMeta.LastCompute = now
 		end
