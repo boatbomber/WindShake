@@ -149,7 +149,7 @@ function WindShake:Update(dt)
 			local objSettings = objMeta.Settings
 
 			local seed = objMeta.Seed
-			local amp = math.abs(objSettings.WindPower * 0.1)
+			local amp = objSettings.WindPower * 0.1
 
 			local freq = now * (objSettings.WindSpeed * 0.08)
 			local rotX = math.noise(freq, 0, seed) * amp
@@ -221,7 +221,7 @@ function WindShake:Init()
 	if typeof(direction) ~= "Vector3" then
 		script:SetAttribute("WindDirection", DEFAULT_SETTINGS.WindDirection)
 	end
-	
+
 	-- Clear any old stuff.
 	self:Cleanup()
 
@@ -274,10 +274,8 @@ function WindShake:UpdateObjectSettings(object: Instance, settingsTable: WindSha
 		return
 	end
 
-	if not self.ObjectMetadata[object] then
-		if object ~= script then
-			return
-		end
+	if (not self.ObjectMetadata[object]) and (object ~= script) then
+		return
 	end
 
 	for key, value in pairs(settingsTable) do
@@ -293,10 +291,8 @@ function WindShake:UpdateAllObjectSettings(settingsTable: WindShakeSettings)
 	end
 
 	for obj, objMeta in pairs(self.ObjectMetadata) do
-		local objSettings = objMeta.Settings
-
 		for key, value in pairs(settingsTable) do
-			objSettings[key] = value
+			obj:SetAttribute(key, value)
 		end
 		ObjectShakeUpdatedEvent:Fire(obj)
 	end
