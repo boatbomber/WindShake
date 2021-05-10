@@ -90,10 +90,10 @@ function Octree:RadiusSearch(Position: Vector3, Radius: number)
 
 	for _, RegionList in next, self.RegionHashMap do
 		for _, Region in ipairs(RegionList) do
-			local Position = Region.Position
-			local RegionPositionX = Position[1]
-			local RegionPositionY = Position[2]
-			local RegionPositionZ = Position[3]
+			local RegionPosition = Region.Position
+			local RegionPositionX = RegionPosition[1]
+			local RegionPositionY = RegionPosition[2]
+			local RegionPositionZ = RegionPosition[3]
 
 			local OffsetX, OffsetY, OffsetZ = PositionX - RegionPositionX, PositionY - RegionPositionY, PositionZ - RegionPositionZ
 			local Distance2 = OffsetX * OffsetX + OffsetY * OffsetY + OffsetZ * OffsetZ
@@ -132,10 +132,10 @@ function Octree:KNearestNeighborsSearch(Position: Vector3, K: number, Radius: nu
 
 	for _, RegionList in next, self.RegionHashMap do
 		for _, Region in ipairs(RegionList) do
-			local Position = Region.Position
-			local RegionPositionX = Position[1]
-			local RegionPositionY = Position[2]
-			local RegionPositionZ = Position[3]
+			local RegionPosition = Region.Position
+			local RegionPositionX = RegionPosition[1]
+			local RegionPositionY = RegionPosition[2]
+			local RegionPositionZ = RegionPosition[3]
 
 			local OffsetX, OffsetY, OffsetZ = PositionX - RegionPositionX, PositionY - RegionPositionY, PositionZ - RegionPositionZ
 			local Distance2 = OffsetX * OffsetX + OffsetY * OffsetY + OffsetZ * OffsetZ
@@ -218,13 +218,13 @@ function Octree:GetOrCreateLowestSubRegion(PositionX: number, PositionY: number,
 	local MaxDepth = self.MaxDepth
 	local Current = Region
 	for _ = Region.Depth, MaxDepth do
-		local Position = Current.Position
-		local Index = PositionX > Position[1] and 1 or 2
-		if PositionY <= Position[2] then
+		local CurrentPosition = Current.Position
+		local Index = PositionX > CurrentPosition[1] and 1 or 2
+		if PositionY <= CurrentPosition[2] then
 			Index += 4
 		end
 
-		if PositionZ >= Position[3] then
+		if PositionZ >= CurrentPosition[3] then
 			Index += 2
 		end
 
@@ -234,7 +234,6 @@ function Octree:GetOrCreateLowestSubRegion(PositionX: number, PositionY: number,
 		-- construct
 		if not Next then
 			local Size = Current.Size
-			local CurrentPosition = Current.Position
 			local Multiplier = SUB_REGION_POSITION_OFFSET[Index]
 
 			local X, Y, Z = Size[1], Size[2], Size[3]
