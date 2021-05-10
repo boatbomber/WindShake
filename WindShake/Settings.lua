@@ -1,31 +1,51 @@
 local Settings = {}
 
+local SettingTypes = {
+	WindPower = "number";
+	WindSpeed = "number";
+	WindDirection = "Vector3";
+}
+
 function Settings.new(object, base)
-	local inst = {
-		_object = object;
-		_base = base;
-	}
-	
-	return setmetatable(inst, Settings)
-end
+	local inst = table.create(3)
 
-function Settings:__index(key)
-	local result = self._object:GetAttribute(key)
-	local base = self._base
-	
-	if base ~= nil then
-		base = base[key]
+	-- Initial settings
 
-		if typeof(result) ~= typeof(base) then
-			result = base
-		end
+	local WindPower = object:GetAttribute("WindPower")
+	local WindSpeed = object:GetAttribute("WindSpeed")
+	local WindDirection = object:GetAttribute("WindDirection")
+
+	inst.WindPower = typeof(WindPower) == SettingTypes.WindPower and WindPower or base.WindPower
+	inst.WindSpeed = typeof(WindSpeed) == SettingTypes.WindSpeed and WindSpeed or base.WindSpeed
+	inst.WindDirection = typeof(WindDirection) == SettingTypes.WindDirection and WindDirection or base.WindDirection
+
+	-- Update settings on event
+
+	local PowerConnection = object:GetAttributeChangedSignal("WindPower"):Connect(function()
+		WindPower = object:GetAttribute("WindPower")
+		inst.WindPower = typeof(WindPower) == SettingTypes.WindPower and WindPower or base.WindPower
+	end)
+
+	local SpeedConnection = object:GetAttributeChangedSignal("WindSpeed"):Connect(function()
+		WindSpeed = object:GetAttribute("WindSpeed")
+		inst.WindSpeed = typeof(WindSpeed) == SettingTypes.WindSpeed and WindSpeed or base.WindSpeed
+	end)
+
+	local DirectionConnection = object:GetAttributeChangedSignal("WindDirection"):Connect(function()
+		WindDirection = object:GetAttribute("WindDirection")
+		inst.WindDirection = typeof(WindDirection) == SettingTypes.WindDirection and WindDirection or base.WindDirection
+	end)
+
+	-- Cleanup function for when shake is removed or object is unloaded
+
+	function inst:Destroy()
+		PowerConnection:Disconnect()
+		SpeedConnection:Disconnect()
+		DirectionConnection:Disconnect()
+		table.clear(inst)
 	end
-	
-	return result
-end
 
-function Settings:__newindex(key, value)
-	self._object:SetAttribute(key, value)
+	return inst
 end
 
 return Settings

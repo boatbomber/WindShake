@@ -13,7 +13,8 @@ local Settings = require(script.Settings)
 local Octree = require(script.Octree)
 
 local COLLECTION_TAG = "WindShake" -- The CollectionService tag to be watched and mounted automatically
-local UPDATE_HZ = 1/30 -- Update the object targets at 30 Hz.
+local UPDATE_HZ = 1/45 -- Update the object positions at 45 Hz.
+local COMPUTE_HZ = 1/30 -- Compute the object targets at 30 Hz.
 
 -- Use the script's attributes as the default settings.
 -- The table provided is a fallback if the attributes
@@ -39,6 +40,7 @@ local WindShake = {
 
 	Handled = 0;
 	Active = 0;
+	LastUpdate = os.clock();
 
 	ObjectShakeAdded = ObjectShakeAddedEvent.Event;
 	ObjectShakeRemoved = ObjectShakeRemovedEvent.Event;
@@ -104,6 +106,7 @@ function WindShake:RemoveObjectShake(object: BasePart)
 	if objMeta then
 		self.Handled -= 1
 		metadata[object] = nil
+		objMeta.Settings:Destroy()
 		objMeta.Node:Destroy()
 
 		if object:IsA("BasePart") then
@@ -114,19 +117,30 @@ function WindShake:RemoveObjectShake(object: BasePart)
 	ObjectShakeRemovedEvent:Fire(object)
 end
 
-function WindShake:Update(dt)
+function WindShake:Update()
 	local now = os.clock()
+	local dt = now - self.LastUpdate
+
+	if dt < UPDATE_HZ then
+		return
+	end
+
+	self.LastUpdate = now
+
 	debug.profilebegin("WindShake")
 
 	local camera = workspace.CurrentCamera
 	local cameraCF = camera and camera.CFrame
 
+	debug.profilebegin("Octree Search")
 	local updateObjects = self.Octree:RadiusSearch(cameraCF.Position + (cameraCF.LookVector * 115), 120)
+	debug.profileend()
+
 	local activeCount = #updateObjects
 
 	self.Active = activeCount
 
-	if self.Active < 1 then
+	if activeCount < 1 then
 		return
 	end
 
@@ -134,6 +148,7 @@ function WindShake:Update(dt)
 	local cfTable = table.create(activeCount)
 	local objectMetadata = self.ObjectMetadata
 
+	debug.profilebegin("Calc")
 	for i, object in ipairs(updateObjects) do
 		local objMeta = objectMetadata[object]
 		local lastComp = objMeta.LastCompute or 0
@@ -141,11 +156,11 @@ function WindShake:Update(dt)
 		local origin = objMeta.Origin
 		local current = objMeta.CFrame or origin
 
-		if (now - lastComp) > UPDATE_HZ then
+		if (now - lastComp) > COMPUTE_HZ then
 			local objSettings = objMeta.Settings
 
 			local seed = objMeta.Seed
-			local amp = math.abs(objSettings.WindPower * 0.1)
+			local amp = objSettings.WindPower * 0.1
 
 			local freq = now * (objSettings.WindSpeed * 0.08)
 			local rotX = math.noise(freq, 0, seed) * amp
@@ -163,6 +178,7 @@ function WindShake:Update(dt)
 		objMeta.CFrame = current
 		cfTable[i] = current
 	end
+	debug.profileend()
 
 	workspace:BulkMoveTo(updateObjects, cfTable, Enum.BulkMoveMode.FireCFrameChanged)
 	debug.profileend()
@@ -216,7 +232,7 @@ function WindShake:Init()
 	if typeof(direction) ~= "Vector3" then
 		script:SetAttribute("WindDirection", DEFAULT_SETTINGS.WindDirection)
 	end
-	
+
 	-- Clear any old stuff.
 	self:Cleanup()
 
@@ -269,10 +285,8 @@ function WindShake:UpdateObjectSettings(object: Instance, settingsTable: WindSha
 		return
 	end
 
-	if not self.ObjectMetadata[object] then
-		if object ~= script then
-			return
-		end
+	if (not self.ObjectMetadata[object]) and (object ~= script) then
+		return
 	end
 
 	for key, value in pairs(settingsTable) do
@@ -288,10 +302,8 @@ function WindShake:UpdateAllObjectSettings(settingsTable: WindShakeSettings)
 	end
 
 	for obj, objMeta in pairs(self.ObjectMetadata) do
-		local objSettings = objMeta.Settings
-
 		for key, value in pairs(settingsTable) do
-			objSettings[key] = value
+			obj:SetAttribute(key, value)
 		end
 		ObjectShakeUpdatedEvent:Fire(obj)
 	end
