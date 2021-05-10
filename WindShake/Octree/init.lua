@@ -1,129 +1,277 @@
 --- Octree implementation
 -- @classmod Octree
 
-local OctreeRegionUtils = require(script.OctreeRegionUtils)
+-- Original by Quenty, Optimized by howmanysmall
+
 local OctreeNode = require(script.OctreeNode)
+local OctreeRegionUtils = require(script.OctreeRegionUtils)
 
 local EPSILON = 1e-9
+local SQRT_3_OVER_2 = math.sqrt(3) / 2
+local SUB_REGION_POSITION_OFFSET = {
+	{0.25, 0.25, -0.25};
+	{-0.25, 0.25, -0.25};
+	{0.25, 0.25, 0.25};
+	{-0.25, 0.25, 0.25};
+	{0.25, -0.25, -0.25};
+	{-0.25, -0.25, -0.25};
+	{0.25, -0.25, 0.25};
+	{-0.25, -0.25, 0.25};
+}
 
-local Octree = {}
-Octree.ClassName = "Octree"
+local Octree = {ClassName = "Octree"}
 Octree.__index = Octree
 
+local OctreeNode_new = OctreeNode.new
+local OctreeRegionUtils_GetNeighborsWithinRadius = OctreeRegionUtils.GetNeighborsWithinRadius
+
 function Octree.new()
-	local self = setmetatable({}, Octree)
-
-	self._maxRegionSize = { 512, 512, 512 } -- these should all be the same number
-	self._maxDepth = 4
-	self._regionHashMap = {} -- [hash] = region
-
-	return self
+	return setmetatable({
+		MaxDepth = 4;
+		MaxRegionSize = table.create(3, 512);
+		RegionHashMap = {};
+	}, Octree)
 end
 
 function Octree:ClearNodes()
-	self._maxRegionSize = { 512, 512, 512 } -- these should all be the same number
-	self._maxDepth = 4
-	self._regionHashMap = {} -- [hash] = region
+	self.MaxDepth = 4
+	self.MaxRegionSize = table.create(3, 512)
+	table.clear(self.RegionHashMap)
 end
 
 function Octree:GetAllNodes()
-	local options = {}
+	local Options = {}
+	local Length = 0
 
-	for _, regionList in pairs(self._regionHashMap) do
-		for _, region in pairs(regionList) do
-			for node, _ in pairs(region.nodes) do
-				options[#options+1] = node
+	for _, RegionList in next, self.RegionHashMap do
+		for _, Region in ipairs(RegionList) do
+			for Node in next, Region.Nodes do
+				Length += 1
+				Options[Length] = Node
 			end
 		end
 	end
 
-	return options
+	return Options
 end
 
-function Octree:CreateNode(position, object)
-	assert(typeof(position) == "Vector3", "Bad position value")
-	assert(object, "Bad object value")
-
-	local node = OctreeNode.new(self, object)
-
-	node:SetPosition(position)
-
-	return node
-end
-
-function Octree:RadiusSearch(position, radius)
-	assert(typeof(position) == "Vector3")
-	assert(type(radius) == "number")
-
-	local px, py, pz = position.x, position.y, position.z
-	return self:_radiusSearch(px, py, pz, radius)
-end
-
-function Octree:KNearestNeighborsSearch(position, k, radius)
-	assert(typeof(position) == "Vector3")
-	assert(type(radius) == "number")
-
-	local px, py, pz = position.x, position.y, position.z
-	local objects, nodeDistances2 = self:_radiusSearch(px, py, pz, radius)
-
-	local sortable = {}
-	for index, dist2 in pairs(nodeDistances2) do
-		table.insert(sortable, {
-			dist2 = dist2;
-			index = index;
-		})
+function Octree:CreateNode(Position: Vector3, Object)
+	if typeof(Position) ~= "Vector3" then
+		error("Bad position value")
 	end
 
-	table.sort(sortable, function(a, b)
-		return a.dist2 < b.dist2
-	end)
-
-	local knearest = {}
-	local knearestDist2 = {}
-	for i = 1, math.min(#sortable, k) do
-		local sorted = sortable[i]
-		knearestDist2[#knearestDist2 + 1] = sorted.dist2
-		knearest[#knearest + 1] = objects[sorted.index]
+	if not Object then
+		error("Bad object value.")
 	end
 
-	return knearest, knearestDist2
+	local Node = OctreeNode_new(self, Object)
+	Node:SetPosition(Position)
+	return Node
 end
 
-function Octree:GetOrCreateLowestSubRegion(px, py, pz)
-	local region = self:_getOrCreateRegion(px, py, pz)
-	return OctreeRegionUtils.getOrCreateSubRegionAtDepth(region, px, py, pz, self._maxDepth)
-end
+function Octree:RadiusSearch(Position: Vector3, Radius: number)
+	if typeof(Position) ~= "Vector3" then
+		error("Bad position value")
+	end
 
-function Octree:_radiusSearch(px, py, pz, radius)
-	local objectsFound = {}
-	local nodeDistances2 = {}
+	if type(Radius) ~= "number" then
+		error("Bad radius value")
+	end
 
-	local diameter = self._maxRegionSize[1]
-	local searchRadiusSquared = OctreeRegionUtils.getSearchRadiusSquared(radius, diameter, EPSILON)
+	local PositionX, PositionY, PositionZ = Position.X, Position.Y, Position.Z
+	local ObjectsFound = {}
+	local NodeDistances2 = {}
+	local ObjectsLength = 0
+	local DistancesLength = 0
 
-	for _, regionList in pairs(self._regionHashMap) do
-		for _, region in pairs(regionList) do
-			local rpos = region.position
-			local rpx, rpy, rpz = rpos[1], rpos[2], rpos[3]
-			local ox, oy, oz = px - rpx, py - rpy, pz - rpz
-			local dist2 = ox*ox + oy*oy + oz*oz
+	local Diameter = self.MaxRegionSize[1]
+	local SearchRadius = Radius + SQRT_3_OVER_2 * Diameter
+	local SearchRadiusSquared = SearchRadius * SearchRadius + EPSILON
 
-			if dist2 <= searchRadiusSquared then
-				OctreeRegionUtils.getNeighborsWithinRadius(
-					region, radius, px, py, pz, objectsFound, nodeDistances2, self._maxDepth)
+	for _, RegionList in next, self.RegionHashMap do
+		for _, Region in ipairs(RegionList) do
+			local Position = Region.Position
+			local RegionPositionX = Position[1]
+			local RegionPositionY = Position[2]
+			local RegionPositionZ = Position[3]
+
+			local OffsetX, OffsetY, OffsetZ = PositionX - RegionPositionX, PositionY - RegionPositionY, PositionZ - RegionPositionZ
+			local Distance2 = OffsetX * OffsetX + OffsetY * OffsetY + OffsetZ * OffsetZ
+
+			if Distance2 <= SearchRadiusSquared then
+				ObjectsLength, DistancesLength = OctreeRegionUtils_GetNeighborsWithinRadius(Region, Radius, PositionX, PositionY, PositionZ, ObjectsFound, NodeDistances2, self.MaxDepth, ObjectsLength, DistancesLength)
 			end
 		end
 	end
 
-	return objectsFound, nodeDistances2
+	return ObjectsFound, NodeDistances2
 end
 
-function Octree:_getRegion(px, py, pz)
-	return OctreeRegionUtils.findRegion(self._regionHashMap, self._maxRegionSize, px, py, pz)
+local function NearestNeighborSort(A, B)
+	return A.Distance2 < B.Distance2
 end
 
-function Octree:_getOrCreateRegion(px, py, pz)
-	return OctreeRegionUtils.getOrCreateRegion(self._regionHashMap, self._maxRegionSize, px, py, pz)
+function Octree:KNearestNeighborsSearch(Position: Vector3, K: number, Radius: number)
+	if typeof(Position) ~= "Vector3" then
+		error("Bad position value")
+	end
+
+	if type(Radius) ~= "number" then
+		error("Bad radius value")
+	end
+
+	local PositionX, PositionY, PositionZ = Position.X, Position.Y, Position.Z
+	local Objects = {}
+	local NodeDistances2 = {}
+	local ObjectsLength = 0
+	local DistancesLength = 0
+
+	local Diameter = self.MaxRegionSize[1]
+	local SearchRadius = Radius + SQRT_3_OVER_2 * Diameter
+	local SearchRadiusSquared = SearchRadius * SearchRadius + EPSILON
+
+	for _, RegionList in next, self.RegionHashMap do
+		for _, Region in ipairs(RegionList) do
+			local Position = Region.Position
+			local RegionPositionX = Position[1]
+			local RegionPositionY = Position[2]
+			local RegionPositionZ = Position[3]
+
+			local OffsetX, OffsetY, OffsetZ = PositionX - RegionPositionX, PositionY - RegionPositionY, PositionZ - RegionPositionZ
+			local Distance2 = OffsetX * OffsetX + OffsetY * OffsetY + OffsetZ * OffsetZ
+
+			if Distance2 <= SearchRadiusSquared then
+				ObjectsLength, DistancesLength = OctreeRegionUtils_GetNeighborsWithinRadius(Region, Radius, PositionX, PositionY, PositionZ, Objects, NodeDistances2, self.MaxDepth, ObjectsLength, DistancesLength)
+			end
+		end
+	end
+
+	local Sortable = table.create(DistancesLength)
+	for Index, Distance2 in ipairs(NodeDistances2) do
+		Sortable[Index] = {
+			Distance2 = Distance2;
+			Index = Index;
+		}
+	end
+
+	table.sort(Sortable, NearestNeighborSort)
+
+	local ArrayLength = math.min(DistancesLength, K)
+	local KNearest = table.create(ArrayLength)
+	local KNearestDistance2 = table.create(ArrayLength)
+	for Index = 1, ArrayLength do
+		local Sorted = Sortable[Index]
+		KNearestDistance2[Index] = Sorted.Distance2
+		KNearest[Index] = Objects[Sorted.Index]
+	end
+
+	return KNearest, KNearestDistance2
+end
+
+local function GetOrCreateRegion(self, PositionX: number, PositionY: number, PositionZ: number)
+	local RegionHashMap = self.RegionHashMap
+	local MaxRegionSize = self.MaxRegionSize
+	local X, Y, Z = MaxRegionSize[1], MaxRegionSize[2], MaxRegionSize[3]
+	local CX, CY, CZ = math.floor(PositionX / X + 0.5), math.floor(PositionY / Y + 0.5), math.floor(PositionZ / Z + 0.5)
+	local Hash = CX * 73856093 + CY * 19351301 + CZ * 83492791
+
+	local RegionList = RegionHashMap[Hash]
+	if not RegionList then
+		RegionList = {}
+		RegionHashMap[Hash] = RegionList
+	end
+
+	local RegionPositionX, RegionPositionY, RegionPositionZ = X * CX, Y * CY, Z * CZ
+	for _, Region in ipairs(RegionList) do
+		local Position = Region.Position
+		if Position[1] == RegionPositionX and Position[2] == RegionPositionY and Position[3] == RegionPositionZ then
+			return Region
+		end
+	end
+
+	local HalfSizeX, HalfSizeY, HalfSizeZ = X / 2, Y / 2, Z / 2
+
+	local LowerBoundsArray = {RegionPositionX - HalfSizeX, RegionPositionY - HalfSizeY, RegionPositionZ - HalfSizeZ}
+	local PositionArray = {RegionPositionX, RegionPositionY, RegionPositionZ}
+	local SizeArray = {X, Y, Z}
+	local UpperBoundsArray = {RegionPositionX + HalfSizeX, RegionPositionY + HalfSizeY, RegionPositionZ + HalfSizeZ}
+
+	local Region = {
+		Depth = 1;
+		LowerBounds = LowerBoundsArray;
+		NodeCount = 0;
+		Nodes = {}; -- [node] = true (contains subchild nodes too)
+		Parent = nil;
+		ParentIndex = nil;
+		Position = PositionArray;
+		Size = SizeArray; -- { sx, sy, sz }
+		SubRegions = {};
+		UpperBounds = UpperBoundsArray;
+	}
+
+	table.insert(RegionList, Region)
+	return Region
+end
+
+function Octree:GetOrCreateLowestSubRegion(PositionX: number, PositionY: number, PositionZ: number)
+	local Region = GetOrCreateRegion(self, PositionX, PositionY, PositionZ)
+	local MaxDepth = self.MaxDepth
+	local Current = Region
+	for _ = Region.Depth, MaxDepth do
+		local Position = Current.Position
+		local Index = PositionX > Position[1] and 1 or 2
+		if PositionY <= Position[2] then
+			Index += 4
+		end
+
+		if PositionZ >= Position[3] then
+			Index += 2
+		end
+
+		local SubRegions = Current.SubRegions
+		local Next = SubRegions[Index]
+
+		-- construct
+		if not Next then
+			local Size = Current.Size
+			local CurrentPosition = Current.Position
+			local Multiplier = SUB_REGION_POSITION_OFFSET[Index]
+
+			local X, Y, Z = Size[1], Size[2], Size[3]
+			local CurrentPositionX = CurrentPosition[1] + Multiplier[1] * X
+			local CurrentPositionY = CurrentPosition[2] + Multiplier[2] * Y
+			local CurrentPositionZ = CurrentPosition[3] + Multiplier[3] * Z
+			local SizeX, SizeY, SizeZ = X / 2, Y / 2, Z / 2
+
+			local HalfSizeX, HalfSizeY, HalfSizeZ = SizeX / 2, SizeY / 2, SizeZ / 2
+
+			local LowerBoundsArray = {CurrentPositionX - HalfSizeX, CurrentPositionY - HalfSizeY, CurrentPositionZ - HalfSizeZ}
+			local PositionArray = {CurrentPositionX, CurrentPositionY, CurrentPositionZ}
+			local SizeArray = {SizeX, SizeY, SizeZ}
+			local UpperBoundsArray = {CurrentPositionX + HalfSizeX, CurrentPositionY + HalfSizeY, CurrentPositionZ + HalfSizeZ}
+
+			Next = {
+				Depth = Current and (Current.Depth + 1) or 1;
+				LowerBounds = LowerBoundsArray;
+				NodeCount = 0;
+				Nodes = {}; -- [node] = true (contains subchild nodes too)
+				Parent = Current;
+				ParentIndex = Index;
+				Position = PositionArray;
+				Size = SizeArray; -- { sx, sy, sz }
+				SubRegions = {};
+				UpperBounds = UpperBoundsArray;
+			}
+
+			-- Next = OctreeRegionUtils.CreateSubRegion(Current, Index)
+			SubRegions[Index] = Next
+		end
+
+		-- iterate
+		Current = Next
+	end
+
+	return Current
 end
 
 return Octree

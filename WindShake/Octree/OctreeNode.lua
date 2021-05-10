@@ -1,80 +1,177 @@
 --- Basic node interacting with the octree
 -- @classmod OctreeNode
-local OctreeRegionUtils = require(script.Parent.OctreeRegionUtils)
 
-local OctreeNode = {}
-OctreeNode.ClassName = "OctreeNode"
+local OctreeNode = {ClassName = "OctreeNode"}
 OctreeNode.__index = OctreeNode
 
-function OctreeNode.new(octree, object)
-	local self = setmetatable({}, OctreeNode)
+function OctreeNode.new(Octree, Object)
+	return setmetatable({
+		Octree = Octree or error("No octree");
+		Object = Object or error("No object");
 
-	self._octree = octree or error("No octree")
-	self._object = object or error("No object")
-
-	self._currentLowestRegion = nil
-	self._position = nil
-
-	return self
+		CurrentLowestRegion = nil;
+		Position = nil;
+		PositionX = nil;
+		PositionY = nil;
+		PositionZ = nil;
+	}, OctreeNode)
 end
 
-function OctreeNode:KNearestNeighborsSearch(k, radius)
-	return self._octree:KNearestNeighborsSearch(self._position, k, radius)
+function OctreeNode:KNearestNeighborsSearch(K: number, Radius: number)
+	return self.Octree:KNearestNeighborsSearch(self.Position, K, Radius)
 end
 
 function OctreeNode:GetObject()
-	return self._object
+	warn("OctreeNode:GetObject is deprecated.")
+	return self.Object
 end
 
-function OctreeNode:RadiusSearch(radius)
-	return self._octree:RadiusSearch(self._position, radius)
+function OctreeNode:RadiusSearch(Radius: number)
+	return self.Octree:RadiusSearch(self.Position, Radius)
 end
 
 function OctreeNode:GetPosition()
-	return self._position
+	warn("OctreeNode:GetPosition is deprecated.")
+	return self.Position
 end
 
-function OctreeNode:GetRawPosition()
-	return self._px, self._py, self._pz
+function OctreeNode:GetRawPosition(): (number, number, number)
+	return self.PositionX, self.PositionY, self.PositionZ
 end
 
-function OctreeNode:SetPosition(position)
-	if self._position == position then
+function OctreeNode:SetPosition(Position: Vector3)
+	if self.Position == Position then
 		return
 	end
 
-	local px, py, pz = position.x, position.y, position.z
+	local PositionX, PositionY, PositionZ = Position.X, Position.Y, Position.Z
 
-	self._px = px
-	self._py = py
-	self._pz = pz
-	self._position = position
+	self.PositionX = PositionX
+	self.PositionY = PositionY
+	self.PositionZ = PositionZ
+	self.Position = Position
 
-	if self._currentLowestRegion then
-		if OctreeRegionUtils.inRegionBounds(self._currentLowestRegion, px, py, pz) then
+	if self.CurrentLowestRegion then
+		local Region = self.CurrentLowestRegion
+		local LowerBounds = Region.LowerBounds
+		local UpperBounds = Region.UpperBounds
+		if PositionX >= LowerBounds[1] and PositionX <= UpperBounds[1] and PositionY >= LowerBounds[2] and PositionY <= UpperBounds[2] and PositionZ >= LowerBounds[3] and PositionZ <= UpperBounds[3] then
 			return
 		end
 	end
 
-	local newLowestRegion = self._octree:GetOrCreateLowestSubRegion(px, py, pz)
+	local NewLowestRegion = self.Octree:GetOrCreateLowestSubRegion(PositionX, PositionY, PositionZ)
+	if self.CurrentLowestRegion then
+		-- OctreeRegionUtils_MoveNode(self.CurrentLowestRegion, NewLowestRegion, self)
+		local FromLowest = self.CurrentLowestRegion
+		if FromLowest.Depth ~= NewLowestRegion.Depth then
+			error("fromLowest.Depth ~= toLowest.Depth")
+		end
 
-	-- Sanity check for debugging
-	-- if not OctreeRegionUtils.inRegionBounds(newLowestRegion, px, py, pz) then
-	-- 	error("[OctreeNode.SetPosition] newLowestRegion is not in region bounds!")
-	-- end
+		if FromLowest == NewLowestRegion then
+			error("fromLowest == toLowest")
+		end
 
-	if self._currentLowestRegion then
-		OctreeRegionUtils.moveNode(self._currentLowestRegion, newLowestRegion, self)
+		local CurrentFrom = FromLowest
+		local CurrentTo = NewLowestRegion
+
+		while CurrentFrom ~= CurrentTo do
+			-- remove from current
+			local CurrentFromNodes = CurrentFrom.Nodes
+			if not CurrentFromNodes[self] then
+				error("CurrentFrom.Nodes doesn't have a node here.")
+			end
+
+			local NodeCount = CurrentFrom.NodeCount
+			if NodeCount <= 0 then
+				error("NodeCount is <= 0.")
+			end
+
+			NodeCount -= 1
+			CurrentFromNodes[self] = nil
+			CurrentFrom.NodeCount = NodeCount
+
+			-- remove subregion!
+			local ParentIndex = CurrentFrom.ParentIndex
+			if NodeCount <= 0 and ParentIndex then
+				local Parent = CurrentFrom.Parent
+				if not Parent then
+					error("CurrentFrom.Parent doesn't exist.")
+				end
+
+				local SubRegions = Parent.SubRegions
+				if SubRegions[ParentIndex] ~= CurrentFrom then
+					error("Failed equality check.")
+				end
+
+				SubRegions[ParentIndex] = nil
+			end
+
+			local CurrentToNodes = CurrentTo.Nodes
+			if CurrentToNodes[self] then
+				error("CurrentTo.Nodes already has a node here.")
+			end
+
+			CurrentToNodes[self] = self
+			CurrentTo.NodeCount += 1
+
+			CurrentFrom = CurrentFrom.Parent
+			CurrentTo = CurrentTo.Parent
+		end
 	else
-		OctreeRegionUtils.addNode(newLowestRegion, self)
+		local Current = NewLowestRegion
+		while Current do
+			local CurrentNodes = Current.Nodes
+			if not CurrentNodes[self] then
+				CurrentNodes[self] = self
+				Current.NodeCount += 1
+			end
+
+			Current = Current.Parent
+		end
 	end
 
-	self._currentLowestRegion = newLowestRegion
+	self.CurrentLowestRegion = NewLowestRegion
 end
 
 function OctreeNode:Destroy()
-	if self._currentLowestRegion then
-		OctreeRegionUtils.removeNode(self._currentLowestRegion, self)
+	local LowestSubregion = self.CurrentLowestRegion
+	if LowestSubregion then
+		local Current = LowestSubregion
+
+		while Current do
+			local Nodes = Current.Nodes
+			if not Nodes[self] then
+				error("CurrentFrom.Nodes doesn't have a node here.")
+			end
+
+			local NodeCount = Current.NodeCount
+			if NodeCount <= 0 then
+				error("NodeCount is <= 0.")
+			end
+
+			NodeCount -= 1
+			Nodes[self] = nil
+			Current.NodeCount = NodeCount
+
+			-- remove subregion!
+			local Parent = Current.Parent
+			local ParentIndex = Current.ParentIndex
+			if NodeCount <= 0 and ParentIndex then
+				if not Parent then
+					error("Current.Parent doesn't exist.")
+				end
+
+				local SubRegions = Parent.SubRegions
+				if SubRegions[ParentIndex] ~= Current then
+					error("Failed equality check.")
+				end
+
+				SubRegions[ParentIndex] = nil
+			end
+
+			Current = Parent
+		end
 	end
 end
 
