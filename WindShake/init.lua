@@ -233,9 +233,6 @@ function WindShake:Init()
 		script:SetAttribute("WindDirection", DEFAULT_SETTINGS.WindDirection)
 	end
 
-	-- Clear any old stuff.
-	self:Cleanup()
-
 	-- Wire up tag listeners.
 	local windShakeAdded = CollectionService:GetInstanceAddedSignal(COLLECTION_TAG)
 	self.AddedConnection = self:Connect("AddObjectShake", windShakeAdded)
