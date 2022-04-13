@@ -1,6 +1,6 @@
 [package]
-name = "boatbomber/windshake"
-description = "High performance wind effect for leaves and foliage"
+name = "boatbomber/distortion-screen-rain"
+description = "Creates small “water droplets” on screen for immersion"
 version = "1.0.0"
 license = "MIT"
 authors = ["boatbomber (https://boatbomber.com)"]
