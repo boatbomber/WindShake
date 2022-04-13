@@ -1,15 +1,15 @@
 {
-    "name": "@boatbomber/Distortion-Screen-Rain",
+    "name": "@boatbomber/windshake",
     "version": "1.0.0",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/boatbomber/Distortion-Screen-Rain.git"
+        "url": "https://github.com/boatbomber/WindShake.git"
     },
     "contributors": [
         "boatbomber"
     ],
     "bugs": {
-        "url": "https://github.com/boatbomber/Distortion-Screen-Rain/issues"
+        "url": "https://github.com/boatbomber/WindShake/issues"
     }
 }
