@@ -4,3 +4,7 @@ description = "High performance wind effect for leaves and foliage"
 version = "1.0.0"
 license = "MIT"
 authors = ["boatbomber (https://boatbomber.com)"]
+registry = "https://github.com/upliftgames/wally-index"
+realm = "shared"
+include = ["src", "src/**", "wally.toml", "wally.lock", "default.project.json"]
+exclude = ["**"]
