@@ -1,6 +1,6 @@
 [package]
-name = "boatbomber/viewportcanvas"
-description = "A greedy meshed ViewportFrame canvas for arbitrary drawings on Roblox"
+name = "boatbomber/windshake"
+description = "High performance wind effect for leaves and foliage"
 version = "1.0.0"
 license = "MIT"
 authors = ["boatbomber (https://boatbomber.com)"]
