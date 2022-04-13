@@ -4,12 +4,12 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/boatbomber/WindShake.git"
+        "url": "https://github.com/boatbomber/ViewportCanvas.git"
     },
     "contributors": [
         "boatbomber"
     ],
     "bugs": {
-        "url": "https://github.com/boatbomber/WindShake/issues"
+        "url": "https://github.com/boatbomber/ViewportCanvas/issues"
     }
 }
