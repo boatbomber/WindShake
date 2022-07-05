@@ -271,7 +271,7 @@ function WindShake:Cleanup()
 	end
 
 	table.clear(self.ObjectMetadata)
-	self.Octree:ClearNodes()
+	self.Octree:ClearAllNodes()
 
 	self.Handled = 0
 	self.Active = 0
