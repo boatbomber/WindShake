@@ -13,17 +13,15 @@ local Settings = require(script.Settings)
 local Octree = require(script.Octree)
 
 local COLLECTION_TAG = "WindShake" -- The CollectionService tag to be watched and mounted automatically
-local UPDATE_HZ = 1/45 -- Update the object positions at 45 Hz.
-local COMPUTE_HZ = 1/30 -- Compute the object targets at 30 Hz.
 
 -- Use the script's attributes as the default settings.
 -- The table provided is a fallback if the attributes
 -- are undefined or using the wrong value types.
 
 local DEFAULT_SETTINGS = Settings.new(script, {
-	WindDirection = Vector3.new(0.5, 0, 0.5);
-	WindSpeed = 20;
-	WindPower = 0.5;
+	WindDirection = Vector3.new(0.5, 0, 0.5),
+	WindSpeed = 20,
+	WindPower = 0.5,
 })
 
 -----------------------------------------------------------------------------------------------------------------
@@ -35,19 +33,22 @@ local PausedEvent = Instance.new("BindableEvent")
 local ResumedEvent = Instance.new("BindableEvent")
 
 local WindShake = {
-	ObjectMetadata = {};
-	Octree = Octree.new();
+	UpdateHz = 1 / 45,
+	ComputeHz = 1 / 30,
+	Radius = 120,
 
-	Handled = 0;
-	Active = 0;
-	LastUpdate = os.clock();
+	ObjectMetadata = {},
+	Octree = Octree.new(),
 
-	ObjectShakeAdded = ObjectShakeAddedEvent.Event;
-	ObjectShakeRemoved = ObjectShakeRemovedEvent.Event;
-	ObjectShakeUpdated = ObjectShakeUpdatedEvent.Event;
-	Paused = PausedEvent.Event;
-	Resumed = ResumedEvent.Event;
+	Handled = 0,
+	Active = 0,
+	LastUpdate = os.clock(),
 
+	ObjectShakeAdded = ObjectShakeAddedEvent.Event,
+	ObjectShakeRemoved = ObjectShakeRemovedEvent.Event,
+	ObjectShakeUpdated = ObjectShakeUpdatedEvent.Event,
+	Paused = PausedEvent.Event,
+	Resumed = ResumedEvent.Event,
 }
 
 export type WindShakeSettings = {
@@ -60,7 +61,7 @@ function WindShake:Connect(funcName: string, event: RBXScriptSignal): RBXScriptC
 	local callback = self[funcName]
 	assert(typeof(callback) == "function", "Unknown function: " .. funcName)
 
-	return event:Connect(function (...)
+	return event:Connect(function(...)
 		return callback(self, ...)
 	end)
 end
@@ -83,14 +84,16 @@ function WindShake:AddObjectShake(object: BasePart, settingsTable: WindShakeSett
 	end
 
 	metadata[object] = {
-		Node = self.Octree:CreateNode(object.Position, object);
-		Settings = Settings.new(object, DEFAULT_SETTINGS);
+		Node = self.Octree:CreateNode(object.Position, object),
+		Settings = Settings.new(object, DEFAULT_SETTINGS),
 
-		Seed = math.random(1000) * 0.1;
-		Origin = object.CFrame;
+		Seed = math.random(1000) * 0.1,
+		Origin = object.CFrame,
 	}
 
-	self:UpdateObjectSettings(object, settingsTable)
+	if settingsTable then
+		self:UpdateObjectSettings(object, settingsTable)
+	end
 
 	ObjectShakeAddedEvent:Fire(object)
 end
@@ -121,7 +124,7 @@ function WindShake:Update()
 	local now = os.clock()
 	local dt = now - self.LastUpdate
 
-	if dt < UPDATE_HZ then
+	if dt < self.UpdateHz then
 		return
 	end
 
@@ -133,7 +136,8 @@ function WindShake:Update()
 	local cameraCF = camera and camera.CFrame
 
 	debug.profilebegin("Octree Search")
-	local updateObjects = self.Octree:RadiusSearch(cameraCF.Position + (cameraCF.LookVector * 115), 120)
+	local updateObjects =
+		self.Octree:RadiusSearch(cameraCF.Position + (cameraCF.LookVector * (self.Radius * 0.95)), self.Radius)
 	debug.profileend()
 
 	local activeCount = #updateObjects
@@ -156,7 +160,7 @@ function WindShake:Update()
 		local origin = objMeta.Origin
 		local current = objMeta.CFrame or origin
 
-		if (now - lastComp) > COMPUTE_HZ then
+		if (now - lastComp) > self.ComputeHz then
 			local objSettings = objMeta.Settings
 
 			local seed = objMeta.Seed
@@ -165,11 +169,14 @@ function WindShake:Update()
 			local freq = now * (objSettings.WindSpeed * 0.08)
 			local rotX = math.noise(freq, 0, seed) * amp
 			local rotY = math.noise(freq, 0, -seed) * amp
-			local rotZ = math.noise(freq, 0, seed+seed) * amp
+			local rotZ = math.noise(freq, 0, seed + seed) * amp
 			local offset = object.PivotOffset
 			local worldpivot = origin * offset
 
-			objMeta.Target = (worldpivot * CFrame.Angles(rotX, rotY, rotZ) + objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)) * offset:Inverse()
+			objMeta.Target = (
+				worldpivot * CFrame.Angles(rotX, rotY, rotZ)
+				+ objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)
+			) * offset:Inverse()
 
 			objMeta.LastCompute = now
 		end
@@ -243,7 +250,7 @@ function WindShake:Init()
 	local windShakeRemoved = CollectionService:GetInstanceRemovedSignal(COLLECTION_TAG)
 	self.RemovedConnection = self:Connect("RemoveObjectShake", windShakeRemoved)
 
-	for _,object in pairs(CollectionService:GetTagged(COLLECTION_TAG)) do
+	for _, object in pairs(CollectionService:GetTagged(COLLECTION_TAG)) do
 		self:AddObjectShake(object)
 	end
 
@@ -285,7 +292,7 @@ function WindShake:UpdateObjectSettings(object: Instance, settingsTable: WindSha
 		return
 	end
 
-	if (not self.ObjectMetadata[object]) and (object ~= script) then
+	if not self.ObjectMetadata[object] and (object ~= script) then
 		return
 	end
 

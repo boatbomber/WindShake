@@ -4,14 +4,14 @@
 local EPSILON = 1e-6
 local SQRT_3_OVER_2 = math.sqrt(3) / 2
 local SUB_REGION_POSITION_OFFSET = {
-	{0.25, 0.25, -0.25};
-	{-0.25, 0.25, -0.25};
-	{0.25, 0.25, 0.25};
-	{-0.25, 0.25, 0.25};
-	{0.25, -0.25, -0.25};
-	{-0.25, -0.25, -0.25};
-	{0.25, -0.25, 0.25};
-	{-0.25, -0.25, 0.25};
+	{ 0.25, 0.25, -0.25 },
+	{ -0.25, 0.25, -0.25 },
+	{ 0.25, 0.25, 0.25 },
+	{ -0.25, 0.25, 0.25 },
+	{ 0.25, -0.25, -0.25 },
+	{ -0.25, -0.25, -0.25 },
+	{ 0.25, -0.25, 0.25 },
+	{ -0.25, -0.25, 0.25 },
 }
 
 local OctreeRegionUtils = {}
@@ -20,7 +20,18 @@ local OctreeRegionUtils = {}
 -- luacheck: push ignore
 -- https://github.com/PointCloudLibrary/pcl/blob/29f192af57a3e7bdde6ff490669b211d8148378f/octree/include/pcl/octree/impl/octree_search.hpp#L309
 -- luacheck: pop
-local function GetNeighborsWithinRadius(Region, Radius, PositionX, PositionY, PositionZ, ObjectsFound, NodeDistances2, MaxDepth, ObjectsLength, DistancesLength)
+local function GetNeighborsWithinRadius(
+	Region,
+	Radius,
+	PositionX,
+	PositionY,
+	PositionZ,
+	ObjectsFound,
+	NodeDistances2,
+	MaxDepth,
+	ObjectsLength,
+	DistancesLength
+)
 	if not MaxDepth then
 		error("Missing MaxDepth.")
 	end
@@ -52,7 +63,9 @@ local function GetNeighborsWithinRadius(Region, Radius, PositionX, PositionY, Po
 					local NodeOffsetX = NodePositionX - PositionX
 					local NodeOffsetY = NodePositionY - PositionY
 					local NodeOffsetZ = NodePositionZ - PositionZ
-					local NodeDistance2 = NodeOffsetX * NodeOffsetX + NodeOffsetY * NodeOffsetY + NodeOffsetZ * NodeOffsetZ
+					local NodeDistance2 = NodeOffsetX * NodeOffsetX
+						+ NodeOffsetY * NodeOffsetY
+						+ NodeOffsetZ * NodeOffsetZ
 
 					if NodeDistance2 <= RadiusSquared then
 						ObjectsLength += 1
@@ -62,7 +75,18 @@ local function GetNeighborsWithinRadius(Region, Radius, PositionX, PositionY, Po
 					end
 				end
 			else
-				ObjectsLength, DistancesLength = GetNeighborsWithinRadius(ChildRegion, Radius, PositionX, PositionY, PositionZ, ObjectsFound, NodeDistances2, MaxDepth, ObjectsLength, DistancesLength)
+				ObjectsLength, DistancesLength = GetNeighborsWithinRadius(
+					ChildRegion,
+					Radius,
+					PositionX,
+					PositionY,
+					PositionZ,
+					ObjectsFound,
+					NodeDistances2,
+					MaxDepth,
+					ObjectsLength,
+					DistancesLength
+				)
 			end
 		end
 	end

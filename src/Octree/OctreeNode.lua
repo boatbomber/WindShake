@@ -1,19 +1,19 @@
 --- Basic node interacting with the octree
 -- @classmod OctreeNode
 
-local OctreeNode = {ClassName = "OctreeNode"}
+local OctreeNode = { ClassName = "OctreeNode" }
 OctreeNode.__index = OctreeNode
 
 function OctreeNode.new(Octree, Object)
 	return setmetatable({
-		Octree = Octree or error("No octree");
-		Object = Object or error("No object");
+		Octree = Octree or error("No octree"),
+		Object = Object or error("No object"),
 
-		CurrentLowestRegion = nil;
-		Position = nil;
-		PositionX = nil;
-		PositionY = nil;
-		PositionZ = nil;
+		CurrentLowestRegion = nil,
+		Position = nil,
+		PositionX = nil,
+		PositionY = nil,
+		PositionZ = nil,
 	}, OctreeNode)
 end
 
@@ -55,7 +55,14 @@ function OctreeNode:SetPosition(Position: Vector3)
 		local Region = self.CurrentLowestRegion
 		local LowerBounds = Region.LowerBounds
 		local UpperBounds = Region.UpperBounds
-		if PositionX >= LowerBounds[1] and PositionX <= UpperBounds[1] and PositionY >= LowerBounds[2] and PositionY <= UpperBounds[2] and PositionZ >= LowerBounds[3] and PositionZ <= UpperBounds[3] then
+		if
+			PositionX >= LowerBounds[1]
+			and PositionX <= UpperBounds[1]
+			and PositionY >= LowerBounds[2]
+			and PositionY <= UpperBounds[2]
+			and PositionZ >= LowerBounds[3]
+			and PositionZ <= UpperBounds[3]
+		then
 			return
 		end
 	end

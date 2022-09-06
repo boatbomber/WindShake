@@ -1,9 +1,9 @@
 local Settings = {}
 
 local SettingTypes = {
-	WindPower = "number";
-	WindSpeed = "number";
-	WindDirection = "Vector3";
+	WindPower = "number",
+	WindSpeed = "number",
+	WindDirection = "Vector3",
 }
 
 function Settings.new(object, base)
