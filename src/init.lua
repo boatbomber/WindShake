@@ -91,7 +91,9 @@ function WindShake:AddObjectShake(object: BasePart, settingsTable: WindShakeSett
 		Origin = object.CFrame,
 	}
 
-	self:UpdateObjectSettings(object, settingsTable)
+	if settingsTable then
+		self:UpdateObjectSettings(object, settingsTable)
+	end
 
 	ObjectShakeAddedEvent:Fire(object)
 end
