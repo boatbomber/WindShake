@@ -13,8 +13,6 @@ local Settings = require(script.Settings)
 local Octree = require(script.Octree)
 
 local COLLECTION_TAG = "WindShake" -- The CollectionService tag to be watched and mounted automatically
-local UPDATE_HZ = 1/45 -- Update the object positions at 45 Hz.
-local COMPUTE_HZ = 1/30 -- Compute the object targets at 30 Hz.
 
 -- Use the script's attributes as the default settings.
 -- The table provided is a fallback if the attributes
@@ -35,6 +33,10 @@ local PausedEvent = Instance.new("BindableEvent")
 local ResumedEvent = Instance.new("BindableEvent")
 
 local WindShake = {
+	UpdateHz = 1/45,
+	ComputeHz = 1/30,
+	Radius = 120,
+
 	ObjectMetadata = {};
 	Octree = Octree.new();
 
@@ -121,7 +123,7 @@ function WindShake:Update()
 	local now = os.clock()
 	local dt = now - self.LastUpdate
 
-	if dt < UPDATE_HZ then
+	if dt < self.UpdateHz then
 		return
 	end
 
@@ -133,7 +135,7 @@ function WindShake:Update()
 	local cameraCF = camera and camera.CFrame
 
 	debug.profilebegin("Octree Search")
-	local updateObjects = self.Octree:RadiusSearch(cameraCF.Position + (cameraCF.LookVector * 115), 120)
+	local updateObjects = self.Octree:RadiusSearch(cameraCF.Position + (cameraCF.LookVector * (self.Radius*0.95)), self.Radius)
 	debug.profileend()
 
 	local activeCount = #updateObjects
@@ -156,7 +158,7 @@ function WindShake:Update()
 		local origin = objMeta.Origin
 		local current = objMeta.CFrame or origin
 
-		if (now - lastComp) > COMPUTE_HZ then
+		if (now - lastComp) > self.ComputeHz then
 			local objSettings = objMeta.Settings
 
 			local seed = objMeta.Seed
