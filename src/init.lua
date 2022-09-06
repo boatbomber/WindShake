@@ -19,9 +19,9 @@ local COLLECTION_TAG = "WindShake" -- The CollectionService tag to be watched an
 -- are undefined or using the wrong value types.
 
 local DEFAULT_SETTINGS = Settings.new(script, {
-	WindDirection = Vector3.new(0.5, 0, 0.5);
-	WindSpeed = 20;
-	WindPower = 0.5;
+	WindDirection = Vector3.new(0.5, 0, 0.5),
+	WindSpeed = 20,
+	WindPower = 0.5,
 })
 
 -----------------------------------------------------------------------------------------------------------------
@@ -33,23 +33,22 @@ local PausedEvent = Instance.new("BindableEvent")
 local ResumedEvent = Instance.new("BindableEvent")
 
 local WindShake = {
-	UpdateHz = 1/45,
-	ComputeHz = 1/30,
+	UpdateHz = 1 / 45,
+	ComputeHz = 1 / 30,
 	Radius = 120,
 
-	ObjectMetadata = {};
-	Octree = Octree.new();
+	ObjectMetadata = {},
+	Octree = Octree.new(),
 
-	Handled = 0;
-	Active = 0;
-	LastUpdate = os.clock();
+	Handled = 0,
+	Active = 0,
+	LastUpdate = os.clock(),
 
-	ObjectShakeAdded = ObjectShakeAddedEvent.Event;
-	ObjectShakeRemoved = ObjectShakeRemovedEvent.Event;
-	ObjectShakeUpdated = ObjectShakeUpdatedEvent.Event;
-	Paused = PausedEvent.Event;
-	Resumed = ResumedEvent.Event;
-
+	ObjectShakeAdded = ObjectShakeAddedEvent.Event,
+	ObjectShakeRemoved = ObjectShakeRemovedEvent.Event,
+	ObjectShakeUpdated = ObjectShakeUpdatedEvent.Event,
+	Paused = PausedEvent.Event,
+	Resumed = ResumedEvent.Event,
 }
 
 export type WindShakeSettings = {
@@ -62,7 +61,7 @@ function WindShake:Connect(funcName: string, event: RBXScriptSignal): RBXScriptC
 	local callback = self[funcName]
 	assert(typeof(callback) == "function", "Unknown function: " .. funcName)
 
-	return event:Connect(function (...)
+	return event:Connect(function(...)
 		return callback(self, ...)
 	end)
 end
@@ -85,11 +84,11 @@ function WindShake:AddObjectShake(object: BasePart, settingsTable: WindShakeSett
 	end
 
 	metadata[object] = {
-		Node = self.Octree:CreateNode(object.Position, object);
-		Settings = Settings.new(object, DEFAULT_SETTINGS);
+		Node = self.Octree:CreateNode(object.Position, object),
+		Settings = Settings.new(object, DEFAULT_SETTINGS),
 
-		Seed = math.random(1000) * 0.1;
-		Origin = object.CFrame;
+		Seed = math.random(1000) * 0.1,
+		Origin = object.CFrame,
 	}
 
 	self:UpdateObjectSettings(object, settingsTable)
@@ -135,7 +134,8 @@ function WindShake:Update()
 	local cameraCF = camera and camera.CFrame
 
 	debug.profilebegin("Octree Search")
-	local updateObjects = self.Octree:RadiusSearch(cameraCF.Position + (cameraCF.LookVector * (self.Radius*0.95)), self.Radius)
+	local updateObjects =
+		self.Octree:RadiusSearch(cameraCF.Position + (cameraCF.LookVector * (self.Radius * 0.95)), self.Radius)
 	debug.profileend()
 
 	local activeCount = #updateObjects
@@ -167,11 +167,14 @@ function WindShake:Update()
 			local freq = now * (objSettings.WindSpeed * 0.08)
 			local rotX = math.noise(freq, 0, seed) * amp
 			local rotY = math.noise(freq, 0, -seed) * amp
-			local rotZ = math.noise(freq, 0, seed+seed) * amp
+			local rotZ = math.noise(freq, 0, seed + seed) * amp
 			local offset = object.PivotOffset
 			local worldpivot = origin * offset
 
-			objMeta.Target = (worldpivot * CFrame.Angles(rotX, rotY, rotZ) + objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)) * offset:Inverse()
+			objMeta.Target = (
+				worldpivot * CFrame.Angles(rotX, rotY, rotZ)
+				+ objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)
+			) * offset:Inverse()
 
 			objMeta.LastCompute = now
 		end
@@ -245,7 +248,7 @@ function WindShake:Init()
 	local windShakeRemoved = CollectionService:GetInstanceRemovedSignal(COLLECTION_TAG)
 	self.RemovedConnection = self:Connect("RemoveObjectShake", windShakeRemoved)
 
-	for _,object in pairs(CollectionService:GetTagged(COLLECTION_TAG)) do
+	for _, object in pairs(CollectionService:GetTagged(COLLECTION_TAG)) do
 		self:AddObjectShake(object)
 	end
 
@@ -287,7 +290,7 @@ function WindShake:UpdateObjectSettings(object: Instance, settingsTable: WindSha
 		return
 	end
 
-	if (not self.ObjectMetadata[object]) and (object ~= script) then
+	if not self.ObjectMetadata[object] and (object ~= script) then
 		return
 	end
 
