@@ -31,6 +31,24 @@ https://www.roblox.com/games/6342320514/Wind-Demo
 
 # API:
 
+## Properties
+
+```Lua
+number WindShake.UpdateHz
+```
+*Sets the frequency of the object update stepper. Default 1/45*
+
+```Lua
+number WindShake.ComputeHz
+```
+*Sets the frequency of the object compute stepper. Default 1/30*
+
+```Lua
+number WindShake.Radius
+```
+*Sets the radius for active objects in studs. Default 120*
+
+
 ## Functions
 
 ```Lua
@@ -38,7 +56,7 @@ function WindShake:Init()
 ```
 *Initializes the wind shake logic and adds shake to all tagged objects*
 
-**Returns:**  
+**Returns:**
 * `void`
 
 ```Lua
@@ -46,7 +64,7 @@ function WindShake:Cleanup()
 ```
 *Halts and clears the wind shake logic and all object shakes*
 
-**Returns:**  
+**Returns:**
 * `void`
 
 ```Lua
@@ -54,7 +72,7 @@ function WindShake:Pause()
 ```
 *Halts the wind shake logic without clearing*
 
-**Returns:**  
+**Returns:**
 * `void`
 
 ```Lua
@@ -62,7 +80,7 @@ function WindShake:Resume()
 ```
 *Restarts the wind shake logic without clearing*
 
-**Returns:**  
+**Returns:**
 * `void`
 
 ```Lua
@@ -77,7 +95,7 @@ The Object to apply shaking to
 - `Settings` *[Optional Dictionary]*
 The settings to apply to this object's shake (See below for Settings structure)
 
-**Returns:**  
+**Returns:**
 * `void`
 
 ```Lua
@@ -89,7 +107,7 @@ function WindShake:RemoveObjectShake(Object)
 - `Object` *[BasePart]*
 The Object to remove shaking from
 
-**Returns:**  
+**Returns:**
 * `void`
 
 ```Lua
@@ -105,7 +123,7 @@ function WindShake:SetDefaultSettings(Settings) [DEPRECATED]
 - `Settings` *[Dictionary]*
 The settings to use as default (See below for Settings structure)
 
-**Returns:**  
+**Returns:**
 * `void`
 
 ```Lua
@@ -122,7 +140,7 @@ The Object to apply shake settings to
 - `Settings` *[Dictionary]*
 The settings to apply to this object's shake (See below for Settings structure)
 
-**Returns:**  
+**Returns:**
 * `void`
 
 ```Lua
@@ -135,7 +153,7 @@ function WindShake:UpdateAllObjectSettings(Settings)
 - `Settings` *[Dictionary]*
 The settings to apply to all objects' shake (See below for Settings structure)
 
-**Returns:**  
+**Returns:**
 * `void`
 
 ## Events
@@ -187,7 +205,7 @@ Settings = {
     WindDirection: Vector3 to shake towards (Initially 0.5,0,0.5)
     WindSpeed: Positive number that defines how fast to shake (Initially 20)
     WindPower: Positive number that defines how much to shake (Initially 0.5)
- 
+
     --If one of these is not defined, it will use default for that one,
     --so you can pass a table with just one or two settings and the rest
     --will be default so you don't need to make the full table every time.

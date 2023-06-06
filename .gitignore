@@ -3,6 +3,7 @@
 /*.rbxlx
 /*.rbxm
 /*.rbxmx
+/sourcemap.json
 
 # Roblox Studio lock files
 /*.rbxlx.lock
