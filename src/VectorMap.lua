@@ -190,6 +190,13 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 					continue
 				end
 
+				-- Cut out anything behind the camera plane
+				if
+					(cameraCFrameInverse * chunkWorldPos).Z > halfChunkSize
+				then
+					continue
+				end
+
 				-- Cut out cells that are beyond the camera's FOV
 				local lookToCell = (chunkWorldPos - cameraPos).Unit
 				local localLook = cameraCFrameInverse * (cameraPos + lookToCell)
