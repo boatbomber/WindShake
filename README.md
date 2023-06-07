@@ -44,9 +44,9 @@ number WindShake.ComputeHz
 *Sets the frequency of the object compute stepper. Default 1/30*
 
 ```Lua
-number WindShake.Radius
+number WindShake.RenderDistance
 ```
-*Sets the radius for active objects in studs. Default 120*
+*Sets the render distance for active objects in studs. Default 150*
 
 
 ## Functions
