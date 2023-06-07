@@ -100,10 +100,11 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 	local cameraCFrameInverse = cameraCFrame:Inverse()
 	local cameraPos = cameraCFrame.Position
 	local lookVec = cameraCFrame.LookVector
-	local tanFov2 = math.tan(math.rad(camera.FieldOfView / 2))
+	local horizontalFov2 = math.rad(camera.MaxAxisFieldOfView/2)
+	local verticalFov2 = math.rad(camera.FieldOfView/2)
+	local fovPadding = math.rad(5)
+	local tanFov2 = math.tan(verticalFov2)
 	local aspectRatio = camera.ViewportSize.X / camera.ViewportSize.Y
-
-	-- Build frustum
 
 	local farPlaneHeight2 = tanFov2 * distance
 	local farPlaneWidth2 = farPlaneHeight2 * aspectRatio
@@ -114,50 +115,25 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 	local farPlaneBottomLeft = (farPlaneCFrame * CFrame.new(-farPlaneWidth2, -farPlaneHeight2, 0)).Position
 	local farPlaneBottomRight = (farPlaneCFrame * CFrame.new(farPlaneWidth2, -farPlaneHeight2, 0)).Position
 
-	local right1 = cameraPos - farPlaneTopRight
-	local right2 = cameraPos - farPlaneBottomRight
-	local rightNormal = right1:Cross(right2).Unit
-	local rightMidpoint = Vector3.new(
-		(cameraCFrame.X + farPlaneTopRight.X + farPlaneBottomRight.X) / 3,
-		(cameraCFrame.Y + farPlaneTopRight.Y + farPlaneBottomRight.Y) / 3,
-		(cameraCFrame.Z + farPlaneTopRight.Z + farPlaneBottomRight.Z) / 3
-	)
-	local rightPlaneCFrameInverse = CFrame.lookAt(rightMidpoint, rightMidpoint - rightNormal):Inverse()
-
-	local left1 = cameraPos - farPlaneTopLeft
-	local left2 = cameraPos - farPlaneBottomLeft
-	local leftNormal = left1:Cross(left2).Unit
-	local leftMidpoint = Vector3.new(
-		(cameraCFrame.X + farPlaneTopLeft.X + farPlaneBottomLeft.X) / 3,
-		(cameraCFrame.Y + farPlaneTopLeft.Y + farPlaneBottomLeft.Y) / 3,
-		(cameraCFrame.Z + farPlaneTopLeft.Z + farPlaneBottomLeft.Z) / 3
-	)
-	local leftPlaneCFrameInverse = CFrame.lookAt(leftMidpoint, leftMidpoint + leftNormal):Inverse()
-
-	local top1 = cameraPos - farPlaneTopLeft
-	local top2 = cameraPos - farPlaneTopRight
-	local topNormal = top1:Cross(top2).Unit
-	local topMidpoint = Vector3.new(
-		(cameraCFrame.X + farPlaneTopLeft.X + farPlaneTopRight.X) / 3,
-		(cameraCFrame.Y + farPlaneTopLeft.Y + farPlaneTopRight.Y) / 3,
-		(cameraCFrame.Z + farPlaneTopLeft.Z + farPlaneTopRight.Z) / 3
-	)
-	local topPlaneCFrameInverse = CFrame.lookAt(topMidpoint, topMidpoint - topNormal):Inverse()
-
-	local bottom1 = cameraPos - farPlaneBottomLeft
-	local bottom2 = cameraPos - farPlaneBottomRight
-	local bottomNormal = bottom1:Cross(bottom2).Unit
-	local bottomMidpoint = Vector3.new(
-		(cameraCFrame.X + farPlaneBottomLeft.X + farPlaneBottomRight.X) / 3,
-		(cameraCFrame.Y + farPlaneBottomLeft.Y + farPlaneBottomRight.Y) / 3,
-		(cameraCFrame.Z + farPlaneBottomLeft.Z + farPlaneBottomRight.Z) / 3
-	)
-	local bottomPlaneCFrameInverse = CFrame.lookAt(bottomMidpoint, bottomMidpoint + bottomNormal):Inverse()
-
-	local fovThreshold = math.rad((camera.MaxAxisFieldOfView + 20) / 2)
 	local distThreshold = (cameraPos - farPlaneTopRight).Magnitude
+	local vertAngThreshold = verticalFov2 + fovPadding
+	local horiAngThreshold = horizontalFov2 + fovPadding
 
 	local checkedKeys = {}
+
+	local cameraChunkKey = Vector3.new(
+		math.round(cameraPos.X / chunkSize),
+		math.round(cameraPos.Y / chunkSize),
+		math.round(cameraPos.Z / chunkSize)
+	)
+	checkedKeys[cameraChunkKey] = true
+	local cameraChunk = self._map[cameraChunkKey]
+	if cameraChunk then
+		for _, object in cameraChunk do
+			callback(object)
+		end
+	end
+
 	for x = math.floor(
 		math.min(cameraCFrame.X, farPlaneTopLeft.X, farPlaneTopRight.X, farPlaneBottomLeft.X, farPlaneBottomRight.X)
 			/ chunkSize
@@ -202,22 +178,26 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 
 				local chunkWorldPos = chunkKey * chunkSize
 
+				-- Cheap dist culling for early out
 				if (cameraPos - chunkWorldPos).Magnitude > distThreshold then
 					continue
 				end
 
-				if math.abs(lookVec:Angle(CFrame.lookAt(cameraPos, chunkWorldPos).LookVector)) > fovThreshold then
+				-- Cut out anything past the far plane
+				if
+					(farPlaneCFrameInverse * chunkWorldPos).Z < -halfChunkSize
+				then
 					continue
 				end
 
-				if
-					(cameraCFrameInverse * chunkWorldPos).Z > halfChunkSize -- Behind near plane
-					or (farPlaneCFrameInverse * chunkWorldPos).Z < -halfChunkSize -- Past far plane
-					or (rightPlaneCFrameInverse * chunkWorldPos).Z < -halfChunkSize -- Outside right plane
-					or (leftPlaneCFrameInverse * chunkWorldPos).Z < -halfChunkSize -- Outside left plane
-					or (topPlaneCFrameInverse * chunkWorldPos).Z < -halfChunkSize -- Outside top plane
-					or (bottomPlaneCFrameInverse * chunkWorldPos).Z < -halfChunkSize -- Outside bottom plane
-				then
+				-- Cut out cells that are beyond the camera's FOV
+				local lookToCell = (chunkWorldPos - cameraPos).Unit
+				local localLook = cameraCFrameInverse * (cameraPos + lookToCell)
+
+				if math.abs(lookVec:Angle(((cameraCFrame * Vector3.new(0, localLook.Y, localLook.Z)) - cameraPos).Unit)) > vertAngThreshold then
+					continue
+				end
+				if math.abs(lookVec:Angle(((cameraCFrame * Vector3.new(localLook.X, 0, localLook.Z)) - cameraPos).Unit)) > horiAngThreshold then
 					continue
 				end
 
