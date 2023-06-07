@@ -84,7 +84,7 @@ function WindShake:AddObjectShake(object: BasePart, settingsTable: WindShakeSett
 	end
 
 	metadata[object] = {
-		Node = self.Octree:CreateNode(object.Position, object),
+		Node = self.Octree:CreateNodeFromObject(object),
 		Settings = Settings.new(object, DEFAULT_SETTINGS),
 
 		Seed = math.random(1000) * 0.1,
@@ -136,8 +136,10 @@ function WindShake:Update()
 	local cameraCF = camera and camera.CFrame
 
 	debug.profilebegin("Octree Search")
-	local updateObjects =
-		self.Octree:RadiusSearch(cameraCF.Position + (cameraCF.LookVector * (self.Radius * 0.95)), self.Radius)
+	local updateObjects = self.Octree:SearchRadiusForObjects(
+		cameraCF.Position + (cameraCF.LookVector * (self.Radius * 0.95)),
+		self.Radius
+	)
 	debug.profileend()
 
 	local activeCount = #updateObjects
@@ -276,7 +278,7 @@ function WindShake:Cleanup()
 	end
 
 	table.clear(self.ObjectMetadata)
-	self.Octree:ClearNodes()
+	self.Octree:ClearAllNodes()
 
 	self.Handled = 0
 	self.Active = 0
