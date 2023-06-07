@@ -79,37 +79,22 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 	local chunkSize = self._chunkSize
 	local cameraCFrame = camera.CFrame
 	local tanFov2 = math.tan(math.rad(camera.FieldOfView/2))
+	local fovThreshold = math.rad((camera.MaxAxisFieldOfView) / 2)
 	local aspectRatio = camera.ViewportSize.X / camera.ViewportSize.Y
 	local lookVec = cameraCFrame.LookVector
 
-	local farPlaneHeight = tanFov2 * distance * 2
-	local farPlaneWidth = farPlaneHeight * aspectRatio
+	local farPlaneHeight2 = tanFov2 * distance
+	local farPlaneWidth2 = farPlaneHeight2 * aspectRatio
 	local farPlaneCFrame = cameraCFrame * CFrame.new(0, 0, -distance)
-	local farPlaneTopLeft = (farPlaneCFrame * CFrame.new(-farPlaneWidth/2, farPlaneHeight/2, 0)).Position
-	local farPlaneTopRight = (farPlaneCFrame * CFrame.new(farPlaneWidth/2, farPlaneHeight/2, 0)).Position
-	local farPlaneBottomLeft = (farPlaneCFrame * CFrame.new(-farPlaneWidth/2, -farPlaneHeight/2, 0)).Position
-	local farPlaneBottomRight = (farPlaneCFrame * CFrame.new(farPlaneWidth/2, -farPlaneHeight/2, 0)).Position
+	local farPlaneTopLeft = (farPlaneCFrame * CFrame.new(-farPlaneWidth2, farPlaneHeight2, 0)).Position
+	local farPlaneTopRight = (farPlaneCFrame * CFrame.new(farPlaneWidth2, farPlaneHeight2, 0)).Position
+	local farPlaneBottomLeft = (farPlaneCFrame * CFrame.new(-farPlaneWidth2, -farPlaneHeight2, 0)).Position
+	local farPlaneBottomRight = (farPlaneCFrame * CFrame.new(farPlaneWidth2, -farPlaneHeight2, 0)).Position
 
-	-- Create frustum bounding box
-	local frustumBounds = {
-		min = Vector3.new(
-			math.floor(math.min(cameraCFrame.X, farPlaneTopLeft.X, farPlaneTopRight.X, farPlaneBottomLeft.X, farPlaneBottomRight.X) / chunkSize),
-			math.floor(math.min(cameraCFrame.Y, farPlaneTopLeft.Y, farPlaneTopRight.Y, farPlaneBottomLeft.Y, farPlaneBottomRight.Y) / chunkSize),
-			math.floor(math.min(cameraCFrame.Z, farPlaneTopLeft.Z, farPlaneTopRight.Z, farPlaneBottomLeft.Z, farPlaneBottomRight.Z) / chunkSize)
-		),
-		max = Vector3.new(
-			math.ceil(math.max(cameraCFrame.X, farPlaneTopLeft.X, farPlaneTopRight.X, farPlaneBottomLeft.X, farPlaneBottomRight.X) / chunkSize),
-			math.ceil(math.max(cameraCFrame.Y, farPlaneTopLeft.Y, farPlaneTopRight.Y, farPlaneBottomLeft.Y, farPlaneBottomRight.Y) / chunkSize),
-			math.ceil(math.max(cameraCFrame.Z, farPlaneTopLeft.Z, farPlaneTopRight.Z, farPlaneBottomLeft.Z, farPlaneBottomRight.Z) / chunkSize)
-		),
-	}
-
-	local fovThreshold = math.rad((camera.MaxAxisFieldOfView) / 2)
 	local checkedKeys = {}
-
-	for x = frustumBounds.min.X, frustumBounds.max.X do
-		for y = frustumBounds.min.Y, frustumBounds.max.Y do
-			for z = frustumBounds.min.Z, frustumBounds.max.Z do
+	for x = math.floor(math.min(cameraCFrame.X, farPlaneTopLeft.X, farPlaneTopRight.X, farPlaneBottomLeft.X, farPlaneBottomRight.X) / chunkSize), math.ceil(math.max(cameraCFrame.X, farPlaneTopLeft.X, farPlaneTopRight.X, farPlaneBottomLeft.X, farPlaneBottomRight.X) / chunkSize) do
+		for y = math.floor(math.min(cameraCFrame.Y, farPlaneTopLeft.Y, farPlaneTopRight.Y, farPlaneBottomLeft.Y, farPlaneBottomRight.Y) / chunkSize), math.ceil(math.max(cameraCFrame.Y, farPlaneTopLeft.Y, farPlaneTopRight.Y, farPlaneBottomLeft.Y, farPlaneBottomRight.Y) / chunkSize) do
+			for z = math.floor(math.min(cameraCFrame.Z, farPlaneTopLeft.Z, farPlaneTopRight.Z, farPlaneBottomLeft.Z, farPlaneBottomRight.Z) / chunkSize), math.ceil(math.max(cameraCFrame.Z, farPlaneTopLeft.Z, farPlaneTopRight.Z, farPlaneBottomLeft.Z, farPlaneBottomRight.Z) / chunkSize) do
 				local chunkKey = Vector3.new(x, y, z)
 				if checkedKeys[chunkKey] then
 					continue
@@ -121,10 +106,8 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 					continue
 				end
 
-				local chunkWorldPos = chunkKey * chunkSize
-
 				if
-					math.abs(lookVec:Angle((chunkWorldPos - cameraCFrame.Position).Unit)) > fovThreshold
+					math.abs(lookVec:Angle(((chunkKey * chunkSize) - cameraCFrame.Position).Unit)) > fovThreshold
 				then
 					continue
 				end
