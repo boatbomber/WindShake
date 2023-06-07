@@ -38,7 +38,7 @@ local WindShake = {
 	Radius = 120,
 
 	ObjectMetadata = {},
-	Octree = Octree.new(512),
+	Octree = Octree.new(),
 
 	Handled = 0,
 	Active = 0,
@@ -136,7 +136,7 @@ function WindShake:Update()
 	local cameraCF = camera and camera.CFrame
 
 	debug.profilebegin("Octree Search")
-	local updateObjects = self.Octree:RadiusSearchForObjects(
+	local updateObjects = self.Octree:SearchRadiusForObjects(
 		cameraCF.Position + (cameraCF.LookVector * (self.Radius * 0.95)),
 		self.Radius
 	)
