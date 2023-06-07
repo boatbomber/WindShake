@@ -25,7 +25,7 @@ function VectorMap:_debugDrawChunk(chunkKey: Vector3)
 	selection.Adornee = box
 	selection.Parent = box
 
-	task.delay(1/30, box.Destroy, box)
+	task.delay(1 / 30, box.Destroy, box)
 end
 
 function VectorMap:AddObject(position: Vector3, object: any)
@@ -95,11 +95,11 @@ end
 
 function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, callback: (any) -> ())
 	local chunkSize = self._chunkSize
-	local halfChunkSize = chunkSize / 2
+	local halfChunkSize = (chunkSize :: number) / 2
 	local cameraCFrame = camera.CFrame
 	local cameraCFrameInverse = cameraCFrame:Inverse()
 	local cameraPos = cameraCFrame.Position
-	local tanFov2 = math.tan(math.rad(camera.FieldOfView/2))
+	local tanFov2 = math.tan(math.rad(camera.FieldOfView / 2))
 	local aspectRatio = camera.ViewportSize.X / camera.ViewportSize.Y
 
 	-- Build frustum
@@ -117,9 +117,9 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 	local right2 = cameraPos - farPlaneBottomRight
 	local rightNormal = right1:Cross(right2).Unit
 	local rightMidpoint = Vector3.new(
-		(cameraCFrame.X + farPlaneTopRight.X + farPlaneBottomRight.X)/3,
-		(cameraCFrame.Y + farPlaneTopRight.Y + farPlaneBottomRight.Y)/3,
-		(cameraCFrame.Z + farPlaneTopRight.Z + farPlaneBottomRight.Z)/3
+		(cameraCFrame.X + farPlaneTopRight.X + farPlaneBottomRight.X) / 3,
+		(cameraCFrame.Y + farPlaneTopRight.Y + farPlaneBottomRight.Y) / 3,
+		(cameraCFrame.Z + farPlaneTopRight.Z + farPlaneBottomRight.Z) / 3
 	)
 	local rightPlaneCFrameInverse = CFrame.lookAt(rightMidpoint, rightMidpoint - rightNormal):Inverse()
 
@@ -127,9 +127,9 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 	local left2 = cameraPos - farPlaneBottomLeft
 	local leftNormal = left1:Cross(left2).Unit
 	local leftMidpoint = Vector3.new(
-		(cameraCFrame.X + farPlaneTopLeft.X + farPlaneBottomLeft.X)/3,
-		(cameraCFrame.Y + farPlaneTopLeft.Y + farPlaneBottomLeft.Y)/3,
-		(cameraCFrame.Z + farPlaneTopLeft.Z + farPlaneBottomLeft.Z)/3
+		(cameraCFrame.X + farPlaneTopLeft.X + farPlaneBottomLeft.X) / 3,
+		(cameraCFrame.Y + farPlaneTopLeft.Y + farPlaneBottomLeft.Y) / 3,
+		(cameraCFrame.Z + farPlaneTopLeft.Z + farPlaneBottomLeft.Z) / 3
 	)
 	local leftPlaneCFrameInverse = CFrame.lookAt(leftMidpoint, leftMidpoint + leftNormal):Inverse()
 
@@ -137,9 +137,9 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 	local top2 = cameraPos - farPlaneTopRight
 	local topNormal = top1:Cross(top2).Unit
 	local topMidpoint = Vector3.new(
-		(cameraCFrame.X + farPlaneTopLeft.X + farPlaneTopRight.X)/3,
-		(cameraCFrame.Y + farPlaneTopLeft.Y + farPlaneTopRight.Y)/3,
-		(cameraCFrame.Z + farPlaneTopLeft.Z + farPlaneTopRight.Z)/3
+		(cameraCFrame.X + farPlaneTopLeft.X + farPlaneTopRight.X) / 3,
+		(cameraCFrame.Y + farPlaneTopLeft.Y + farPlaneTopRight.Y) / 3,
+		(cameraCFrame.Z + farPlaneTopLeft.Z + farPlaneTopRight.Z) / 3
 	)
 	local topPlaneCFrameInverse = CFrame.lookAt(topMidpoint, topMidpoint - topNormal):Inverse()
 
@@ -147,18 +147,44 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 	local bottom2 = cameraPos - farPlaneBottomRight
 	local bottomNormal = bottom1:Cross(bottom2).Unit
 	local bottomMidpoint = Vector3.new(
-		(cameraCFrame.X + farPlaneBottomLeft.X + farPlaneBottomRight.X)/3,
-		(cameraCFrame.Y + farPlaneBottomLeft.Y + farPlaneBottomRight.Y)/3,
-		(cameraCFrame.Z + farPlaneBottomLeft.Z + farPlaneBottomRight.Z)/3
+		(cameraCFrame.X + farPlaneBottomLeft.X + farPlaneBottomRight.X) / 3,
+		(cameraCFrame.Y + farPlaneBottomLeft.Y + farPlaneBottomRight.Y) / 3,
+		(cameraCFrame.Z + farPlaneBottomLeft.Z + farPlaneBottomRight.Z) / 3
 	)
 	local bottomPlaneCFrameInverse = CFrame.lookAt(bottomMidpoint, bottomMidpoint + bottomNormal):Inverse()
 
-
-
 	local checkedKeys = {}
-	for x = math.floor(math.min(cameraCFrame.X, farPlaneTopLeft.X, farPlaneTopRight.X, farPlaneBottomLeft.X, farPlaneBottomRight.X) / chunkSize), math.ceil(math.max(cameraCFrame.X, farPlaneTopLeft.X, farPlaneTopRight.X, farPlaneBottomLeft.X, farPlaneBottomRight.X) / chunkSize) do
-		for y = math.floor(math.min(cameraCFrame.Y, farPlaneTopLeft.Y, farPlaneTopRight.Y, farPlaneBottomLeft.Y, farPlaneBottomRight.Y) / chunkSize), math.ceil(math.max(cameraCFrame.Y, farPlaneTopLeft.Y, farPlaneTopRight.Y, farPlaneBottomLeft.Y, farPlaneBottomRight.Y) / chunkSize) do
-			for z = math.floor(math.min(cameraCFrame.Z, farPlaneTopLeft.Z, farPlaneTopRight.Z, farPlaneBottomLeft.Z, farPlaneBottomRight.Z) / chunkSize), math.ceil(math.max(cameraCFrame.Z, farPlaneTopLeft.Z, farPlaneTopRight.Z, farPlaneBottomLeft.Z, farPlaneBottomRight.Z) / chunkSize) do
+	for x = math.floor(
+		math.min(cameraCFrame.X, farPlaneTopLeft.X, farPlaneTopRight.X, farPlaneBottomLeft.X, farPlaneBottomRight.X)
+			/ chunkSize
+	), math.ceil(
+		math.max(cameraCFrame.X, farPlaneTopLeft.X, farPlaneTopRight.X, farPlaneBottomLeft.X, farPlaneBottomRight.X)
+			/ chunkSize
+	) do
+		for y = math.floor(
+			math.min(cameraCFrame.Y, farPlaneTopLeft.Y, farPlaneTopRight.Y, farPlaneBottomLeft.Y, farPlaneBottomRight.Y)
+				/ chunkSize
+		), math.ceil(
+			math.max(cameraCFrame.Y, farPlaneTopLeft.Y, farPlaneTopRight.Y, farPlaneBottomLeft.Y, farPlaneBottomRight.Y)
+				/ chunkSize
+		) do
+			for z = math.floor(
+				math.min(
+					cameraCFrame.Z,
+					farPlaneTopLeft.Z,
+					farPlaneTopRight.Z,
+					farPlaneBottomLeft.Z,
+					farPlaneBottomRight.Z
+				) / chunkSize
+			), math.ceil(
+				math.max(
+					cameraCFrame.Z,
+					farPlaneTopLeft.Z,
+					farPlaneTopRight.Z,
+					farPlaneBottomLeft.Z,
+					farPlaneBottomRight.Z
+				) / chunkSize
+			) do
 				local chunkKey = Vector3.new(x, y, z)
 				if checkedKeys[chunkKey] then
 					continue
@@ -191,7 +217,6 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 		end
 	end
 end
-
 
 function VectorMap:ClearAll()
 	self._map = {}
