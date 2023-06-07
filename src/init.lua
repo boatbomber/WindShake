@@ -10,7 +10,7 @@ Docs: https://devforum.roblox.com/t/wind-shake-high-performance-wind-effect-for-
 local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 local Settings = require(script.Settings)
-local Octree = require(script.Octree)
+local VectorMap = require(script.VectorMap)
 
 local COLLECTION_TAG = "WindShake" -- The CollectionService tag to be watched and mounted automatically
 
@@ -35,10 +35,10 @@ local ResumedEvent = Instance.new("BindableEvent")
 local WindShake = {
 	UpdateHz = 1 / 45,
 	ComputeHz = 1 / 30,
-	Radius = 120,
+	RenderDistance = 110,
 
 	ObjectMetadata = {},
-	Octree = Octree.new(),
+	VectorMap = VectorMap.new(),
 
 	Handled = 0,
 	Active = 0,
@@ -84,7 +84,7 @@ function WindShake:AddObjectShake(object: BasePart, settingsTable: WindShakeSett
 	end
 
 	metadata[object] = {
-		Node = self.Octree:CreateNodeFromObject(object),
+		ChunkKey = self.VectorMap:AddObject(object.Position, object),
 		Settings = Settings.new(object, DEFAULT_SETTINGS),
 
 		Seed = math.random(1000) * 0.1,
@@ -110,7 +110,7 @@ function WindShake:RemoveObjectShake(object: BasePart)
 		self.Handled -= 1
 		metadata[object] = nil
 		objMeta.Settings:Destroy()
-		objMeta.Node:Destroy()
+		self.VectorMap:RemoveObject(objMeta.ChunkKey, object)
 
 		if object:IsA("BasePart") then
 			object.CFrame = objMeta.Origin
@@ -132,30 +132,15 @@ function WindShake:Update()
 
 	debug.profilebegin("WindShake")
 
-	local camera = workspace.CurrentCamera
-	local cameraCF = camera and camera.CFrame
-
-	debug.profilebegin("Octree Search")
-	local updateObjects = self.Octree:SearchRadiusForObjects(
-		cameraCF.Position + (cameraCF.LookVector * (self.Radius * 0.95)),
-		self.Radius
-	)
-	debug.profileend()
-
-	local activeCount = #updateObjects
-
-	self.Active = activeCount
-
-	if activeCount < 1 then
-		return
-	end
-
 	local step = math.min(1, dt * 8)
-	local cfTable = table.create(activeCount)
+	local i = 0
+	local updateObjects = table.create(500)
+	local cfTable = table.create(500)
 	local objectMetadata = self.ObjectMetadata
 
 	debug.profilebegin("Calc")
-	for i, object in ipairs(updateObjects) do
+
+	self.VectorMap:ForEachObjectInFrustum(workspace.CurrentCamera, self.RenderDistance, function(object)
 		local objMeta = objectMetadata[object]
 		local lastComp = objMeta.LastCompute or 0
 
@@ -185,8 +170,14 @@ function WindShake:Update()
 
 		current = current:Lerp(objMeta.Target, step)
 		objMeta.CFrame = current
+
+		i += 1
+		updateObjects[i] = object
 		cfTable[i] = current
-	end
+	end)
+
+	self.Active = #cfTable
+
 	debug.profileend()
 
 	workspace:BulkMoveTo(updateObjects, cfTable, Enum.BulkMoveMode.FireCFrameChanged)
@@ -278,7 +269,7 @@ function WindShake:Cleanup()
 	end
 
 	table.clear(self.ObjectMetadata)
-	self.Octree:ClearAllNodes()
+	self.VectorMap:ClearAll()
 
 	self.Handled = 0
 	self.Active = 0
