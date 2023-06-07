@@ -5,7 +5,7 @@ VectorMap.__index = VectorMap
 
 function VectorMap.new(chunkSize: number?)
 	return setmetatable({
-		_chunkSize = chunkSize or 15,
+		_chunkSize = chunkSize or 75,
 		_map = {},
 	}, VectorMap)
 end
