@@ -99,6 +99,7 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 	local cameraCFrame = camera.CFrame
 	local cameraCFrameInverse = cameraCFrame:Inverse()
 	local cameraPos = cameraCFrame.Position
+	local lookVec = cameraCFrame.LookVector
 	local tanFov2 = math.tan(math.rad(camera.FieldOfView / 2))
 	local aspectRatio = camera.ViewportSize.X / camera.ViewportSize.Y
 
@@ -153,6 +154,9 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 	)
 	local bottomPlaneCFrameInverse = CFrame.lookAt(bottomMidpoint, bottomMidpoint + bottomNormal):Inverse()
 
+	local fovThreshold = math.rad((camera.MaxAxisFieldOfView + 20) / 2)
+	local distThreshold = (cameraPos - farPlaneTopRight).Magnitude
+
 	local checkedKeys = {}
 	for x = math.floor(
 		math.min(cameraCFrame.X, farPlaneTopLeft.X, farPlaneTopRight.X, farPlaneBottomLeft.X, farPlaneBottomRight.X)
@@ -197,6 +201,15 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 				end
 
 				local chunkWorldPos = chunkKey * chunkSize
+
+				if (cameraPos - chunkWorldPos).Magnitude > distThreshold then
+					continue
+				end
+
+				if math.abs(lookVec:Angle(CFrame.lookAt(cameraPos, chunkWorldPos).LookVector)) > fovThreshold then
+					continue
+				end
+
 				if
 					(cameraCFrameInverse * chunkWorldPos).Z > halfChunkSize -- Behind near plane
 					or (farPlaneCFrameInverse * chunkWorldPos).Z < -halfChunkSize -- Past far plane
