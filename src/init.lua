@@ -35,7 +35,7 @@ local ResumedEvent = Instance.new("BindableEvent")
 local WindShake = {
 	UpdateHz = 1 / 45,
 	ComputeHz = 1 / 30,
-	RenderDistance = 110,
+	RenderDistance = 150,
 
 	ObjectMetadata = {},
 	VectorMap = VectorMap.new(),
