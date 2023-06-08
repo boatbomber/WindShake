@@ -109,11 +109,10 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 	local farPlaneHeight2 = tanFov2 * distance
 	local farPlaneWidth2 = farPlaneHeight2 * aspectRatio
 	local farPlaneCFrame = cameraCFrame * CFrame.new(0, 0, -distance)
-	local farPlaneCFrameInverse = farPlaneCFrame:Inverse()
-	local farPlaneTopLeft = (farPlaneCFrame * CFrame.new(-farPlaneWidth2, farPlaneHeight2, 0)).Position
-	local farPlaneTopRight = (farPlaneCFrame * CFrame.new(farPlaneWidth2, farPlaneHeight2, 0)).Position
-	local farPlaneBottomLeft = (farPlaneCFrame * CFrame.new(-farPlaneWidth2, -farPlaneHeight2, 0)).Position
-	local farPlaneBottomRight = (farPlaneCFrame * CFrame.new(farPlaneWidth2, -farPlaneHeight2, 0)).Position
+	local farPlaneTopLeft = farPlaneCFrame * Vector3.new(-farPlaneWidth2, farPlaneHeight2, 0)
+	local farPlaneTopRight = farPlaneCFrame * Vector3.new(farPlaneWidth2, farPlaneHeight2, 0)
+	local farPlaneBottomLeft = farPlaneCFrame * Vector3.new(-farPlaneWidth2, -farPlaneHeight2, 0)
+	local farPlaneBottomRight = farPlaneCFrame * Vector3.new(farPlaneWidth2, -farPlaneHeight2, 0)
 
 	local distThreshold = (cameraPos - farPlaneTopRight).Magnitude
 	local vertAngThreshold = verticalFov2 + fovPadding
@@ -183,16 +182,11 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 					continue
 				end
 
-				-- Cut out anything past the far plane
+				-- Cut out anything past the far plane or behind the camera
+				local depth = (cameraCFrameInverse * chunkWorldPos).Z
 				if
-					(farPlaneCFrameInverse * chunkWorldPos).Z < -halfChunkSize
-				then
-					continue
-				end
-
-				-- Cut out anything behind the camera plane
-				if
-					(cameraCFrameInverse * chunkWorldPos).Z > halfChunkSize
+					depth > halfChunkSize
+					or depth < -halfChunkSize - distance
 				then
 					continue
 				end
