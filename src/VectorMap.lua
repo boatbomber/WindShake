@@ -39,8 +39,7 @@ function VectorMap:AddObject(position: Vector3, object: any)
 	local chunk = self._map[chunkKey]
 
 	if not chunk then
-		chunk = { object }
-		self._map[chunkKey] = chunk
+		self._map[chunkKey] = { object }
 		return chunkKey
 	end
 
