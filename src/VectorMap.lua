@@ -99,7 +99,7 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 	local cameraCFrame = camera.CFrame
 	local cameraCFrameInverse = cameraCFrame:Inverse()
 	local cameraPos = cameraCFrame.Position
-	local lookVec = cameraCFrame.LookVector
+	local lookVec, rightVec, upVec = cameraCFrame.LookVector, cameraCFrame.RightVector, cameraCFrame.UpVector
 	local horizontalFov2 = math.rad(camera.MaxAxisFieldOfView / 2)
 	local verticalFov2 = math.rad(camera.FieldOfView / 2)
 	local fovPadding = math.rad(5)
@@ -189,21 +189,12 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 				end
 
 				-- Cut out cells that are beyond the camera's FOV
-				local lookToCell = (chunkWorldPos - cameraPos).Unit
-				local localLook = cameraCFrameInverse * (cameraPos + lookToCell)
+				local lookToCell = chunkWorldPos - cameraPos
 
-				if
-					math.abs(
-						lookVec:Angle(((cameraCFrame * Vector3.new(0, localLook.Y, localLook.Z)) - cameraPos).Unit)
-					) > vertAngThreshold
-				then
+				if lookVec:Angle(lookToCell - rightVec * rightVec:Dot(lookToCell)) > vertAngThreshold then
 					continue
 				end
-				if
-					math.abs(
-						lookVec:Angle(((cameraCFrame * Vector3.new(localLook.X, 0, localLook.Z)) - cameraPos).Unit)
-					) > horiAngThreshold
-				then
+				if lookVec:Angle(lookToCell - upVec * upVec:Dot(lookToCell)) > horiAngThreshold then
 					continue
 				end
 
