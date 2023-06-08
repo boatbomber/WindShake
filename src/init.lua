@@ -140,7 +140,7 @@ function WindShake:Update()
 
 	debug.profilebegin("Calc")
 
-	self.VectorMap:ForEachObjectInFrustum(workspace.CurrentCamera, self.RenderDistance, function(object)
+	self.VectorMap:ForEachObjectInView(workspace.CurrentCamera, self.RenderDistance, function(object)
 		local objMeta = objectMetadata[object]
 		local lastComp = objMeta.LastCompute or 0
 

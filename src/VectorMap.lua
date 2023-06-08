@@ -95,7 +95,7 @@ function VectorMap:ForEachObjectInRegion(top: Vector3, bottom: Vector3, callback
 	end
 end
 
-function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, callback: (any) -> ())
+function VectorMap:ForEachObjectInView(camera: Camera, distance: number, callback: (any) -> ())
 	local chunkSize = self._chunkSize
 	local halfChunkSize = (chunkSize :: number) / 2
 	local cameraCFrame = camera.CFrame
