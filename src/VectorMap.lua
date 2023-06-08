@@ -100,8 +100,8 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 	local cameraCFrameInverse = cameraCFrame:Inverse()
 	local cameraPos = cameraCFrame.Position
 	local lookVec = cameraCFrame.LookVector
-	local horizontalFov2 = math.rad(camera.MaxAxisFieldOfView/2)
-	local verticalFov2 = math.rad(camera.FieldOfView/2)
+	local horizontalFov2 = math.rad(camera.MaxAxisFieldOfView / 2)
+	local verticalFov2 = math.rad(camera.FieldOfView / 2)
 	local fovPadding = math.rad(5)
 	local tanFov2 = math.tan(verticalFov2)
 	local aspectRatio = camera.ViewportSize.X / camera.ViewportSize.Y
@@ -184,10 +184,7 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 
 				-- Cut out anything past the far plane or behind the camera
 				local depth = (cameraCFrameInverse * chunkWorldPos).Z
-				if
-					depth > halfChunkSize
-					or depth < -halfChunkSize - distance
-				then
+				if depth > halfChunkSize or depth < -halfChunkSize - distance then
 					continue
 				end
 
@@ -195,10 +192,18 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 				local lookToCell = (chunkWorldPos - cameraPos).Unit
 				local localLook = cameraCFrameInverse * (cameraPos + lookToCell)
 
-				if math.abs(lookVec:Angle(((cameraCFrame * Vector3.new(0, localLook.Y, localLook.Z)) - cameraPos).Unit)) > vertAngThreshold then
+				if
+					math.abs(
+						lookVec:Angle(((cameraCFrame * Vector3.new(0, localLook.Y, localLook.Z)) - cameraPos).Unit)
+					) > vertAngThreshold
+				then
 					continue
 				end
-				if math.abs(lookVec:Angle(((cameraCFrame * Vector3.new(localLook.X, 0, localLook.Z)) - cameraPos).Unit)) > horiAngThreshold then
+				if
+					math.abs(
+						lookVec:Angle(((cameraCFrame * Vector3.new(localLook.X, 0, localLook.Z)) - cameraPos).Unit)
+					) > horiAngThreshold
+				then
 					continue
 				end
 
