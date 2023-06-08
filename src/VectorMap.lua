@@ -5,7 +5,7 @@ VectorMap.__index = VectorMap
 
 function VectorMap.new(chunkSize: number?)
 	return setmetatable({
-		_chunkSize = chunkSize or 75,
+		_chunkSize = chunkSize or 50,
 		_map = {},
 	}, VectorMap)
 end
@@ -17,7 +17,7 @@ function VectorMap:_debugDrawChunk(chunkKey: Vector3)
 	box.CanCollide = false
 	box.Transparency = 1
 	box.Size = Vector3.one * self._chunkSize
-	box.Position = chunkKey * self._chunkSize
+	box.Position = (chunkKey * self._chunkSize) + (Vector3.one * (self._chunkSize / 2))
 	box.Parent = workspace
 
 	local selection = Instance.new("SelectionBox")
@@ -30,8 +30,11 @@ end
 
 function VectorMap:AddObject(position: Vector3, object: any)
 	local chunkSize = self._chunkSize
-	local x, y, z = position.X, position.Y, position.Z
-	local chunkKey = Vector3.new(math.round(x / chunkSize), math.round(y / chunkSize), math.round(z / chunkSize))
+	local chunkKey = Vector3.new(
+		math.floor(position.X / chunkSize),
+		math.floor(position.Y / chunkSize),
+		math.floor(position.Z / chunkSize)
+	)
 
 	local chunk = self._map[chunkKey]
 
@@ -77,9 +80,9 @@ function VectorMap:ForEachObjectInRegion(top: Vector3, bottom: Vector3, callback
 	local minx, miny, minz = math.min(bottom.X, top.X), math.min(bottom.Y, top.Y), math.min(bottom.Z, top.Z)
 	local maxx, maxy, maxz = math.max(bottom.X, top.X), math.max(bottom.Y, top.Y), math.max(bottom.Z, top.Z)
 
-	for x = math.floor(minx / chunkSize) - 1, math.ceil(maxx / chunkSize) do
-		for z = math.floor(minz / chunkSize) - 1, math.ceil(maxz / chunkSize) do
-			for y = math.floor(miny / chunkSize) - 1, math.ceil(maxy / chunkSize) do
+	for x = math.floor(minx / chunkSize), math.floor(maxx / chunkSize) do
+		for z = math.floor(minz / chunkSize), math.floor(maxz / chunkSize) do
+			for y = math.floor(miny / chunkSize), math.floor(maxy / chunkSize) do
 				local chunk = self._map[Vector3.new(x, y, z)]
 				if not chunk then
 					continue
@@ -99,14 +102,10 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 	local cameraCFrame = camera.CFrame
 	local cameraCFrameInverse = cameraCFrame:Inverse()
 	local cameraPos = cameraCFrame.Position
-	local lookVec, rightVec, upVec = cameraCFrame.LookVector, cameraCFrame.RightVector, cameraCFrame.UpVector
-	local horizontalFov2 = math.rad(camera.MaxAxisFieldOfView / 2)
-	local verticalFov2 = math.rad(camera.FieldOfView / 2)
-	local fovPadding = math.rad(5)
-	local tanFov2 = math.tan(verticalFov2)
+	local rightVec, upVec = cameraCFrame.RightVector, cameraCFrame.UpVector
 	local aspectRatio = camera.ViewportSize.X / camera.ViewportSize.Y
 
-	local farPlaneHeight2 = tanFov2 * distance
+	local farPlaneHeight2 = math.tan(math.rad(camera.FieldOfView / 2)) * distance
 	local farPlaneWidth2 = farPlaneHeight2 * aspectRatio
 	local farPlaneCFrame = cameraCFrame * CFrame.new(0, 0, -distance)
 	local farPlaneTopLeft = farPlaneCFrame * Vector3.new(-farPlaneWidth2, farPlaneHeight2, 0)
@@ -114,36 +113,26 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 	local farPlaneBottomLeft = farPlaneCFrame * Vector3.new(-farPlaneWidth2, -farPlaneHeight2, 0)
 	local farPlaneBottomRight = farPlaneCFrame * Vector3.new(farPlaneWidth2, -farPlaneHeight2, 0)
 
+	local rightNormal = upVec:Cross(farPlaneBottomRight - cameraPos).Unit
+	local leftNormal = upVec:Cross(farPlaneBottomLeft - cameraPos).Unit
+	local topNormal = rightVec:Cross(cameraPos - farPlaneTopRight).Unit
+	local bottomNormal = rightVec:Cross(cameraPos - farPlaneBottomRight).Unit
+
 	local distThreshold = (cameraPos - farPlaneTopRight).Magnitude
-	local vertAngThreshold = verticalFov2 + fovPadding
-	local horiAngThreshold = horizontalFov2 + fovPadding
 
 	local checkedKeys = {}
-
-	local cameraChunkKey = Vector3.new(
-		math.round(cameraPos.X / chunkSize),
-		math.round(cameraPos.Y / chunkSize),
-		math.round(cameraPos.Z / chunkSize)
-	)
-	checkedKeys[cameraChunkKey] = true
-	local cameraChunk = self._map[cameraChunkKey]
-	if cameraChunk then
-		for _, object in cameraChunk do
-			callback(object)
-		end
-	end
 
 	for x = math.floor(
 		math.min(cameraCFrame.X, farPlaneTopLeft.X, farPlaneTopRight.X, farPlaneBottomLeft.X, farPlaneBottomRight.X)
 			/ chunkSize
-	), math.ceil(
+	), math.floor(
 		math.max(cameraCFrame.X, farPlaneTopLeft.X, farPlaneTopRight.X, farPlaneBottomLeft.X, farPlaneBottomRight.X)
 			/ chunkSize
 	) do
 		for y = math.floor(
 			math.min(cameraCFrame.Y, farPlaneTopLeft.Y, farPlaneTopRight.Y, farPlaneBottomLeft.Y, farPlaneBottomRight.Y)
 				/ chunkSize
-		), math.ceil(
+		), math.floor(
 			math.max(cameraCFrame.Y, farPlaneTopLeft.Y, farPlaneTopRight.Y, farPlaneBottomLeft.Y, farPlaneBottomRight.Y)
 				/ chunkSize
 		) do
@@ -155,7 +144,7 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 					farPlaneBottomLeft.Z,
 					farPlaneBottomRight.Z
 				) / chunkSize
-			), math.ceil(
+			), math.floor(
 				math.max(
 					cameraCFrame.Z,
 					farPlaneTopLeft.Z,
@@ -175,26 +164,36 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 					continue
 				end
 
-				local chunkWorldPos = chunkKey * chunkSize
-
-				-- Cheap dist culling for early out
-				if (cameraPos - chunkWorldPos).Magnitude > distThreshold then
-					continue
-				end
+				local chunkNearestPoint = Vector3.new(
+					math.clamp(farPlaneCFrame.X, x * chunkSize, x * chunkSize + chunkSize),
+					math.clamp(farPlaneCFrame.Y, y * chunkSize, y * chunkSize + chunkSize),
+					math.clamp(farPlaneCFrame.Z, z * chunkSize, z * chunkSize + chunkSize)
+				)
 
 				-- Cut out anything past the far plane or behind the camera
-				local depth = (cameraCFrameInverse * chunkWorldPos).Z
+				local depth = (cameraCFrameInverse * chunkNearestPoint).Z
 				if depth > halfChunkSize or depth < -halfChunkSize - distance then
 					continue
 				end
 
-				-- Cut out cells that are beyond the camera's FOV
-				local lookToCell = chunkWorldPos - cameraPos
+				local lookToCell = chunkNearestPoint - cameraPos
 
-				if lookVec:Angle(lookToCell - rightVec * rightVec:Dot(lookToCell)) > vertAngThreshold then
+				-- Cheap dist culling for early out
+				if lookToCell.Magnitude > distThreshold then
 					continue
 				end
-				if lookVec:Angle(lookToCell - upVec * upVec:Dot(lookToCell)) > horiAngThreshold then
+
+				-- Cut out cells that lie outside a frustum plane
+				if rightNormal:Dot(lookToCell) < 0 then
+					continue
+				end
+				if leftNormal:Dot(lookToCell) > 0 then
+					continue
+				end
+				if topNormal:Dot(lookToCell) < 0 then
+					continue
+				end
+				if bottomNormal:Dot(lookToCell) > 0 then
 					continue
 				end
 
