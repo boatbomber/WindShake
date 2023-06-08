@@ -128,6 +128,10 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 		math.max(cameraCFrame.X, farPlaneTopLeft.X, farPlaneTopRight.X, farPlaneBottomLeft.X, farPlaneBottomRight.X)
 			/ chunkSize
 	) do
+		local xMin = x * chunkSize
+		local xMax = xMin + chunkSize
+		local xPos = math.clamp(farPlaneCFrame.X, xMin, xMax)
+
 		for y = math.floor(
 			math.min(cameraCFrame.Y, farPlaneTopLeft.Y, farPlaneTopRight.Y, farPlaneBottomLeft.Y, farPlaneBottomRight.Y)
 				/ chunkSize
@@ -135,6 +139,10 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 			math.max(cameraCFrame.Y, farPlaneTopLeft.Y, farPlaneTopRight.Y, farPlaneBottomLeft.Y, farPlaneBottomRight.Y)
 				/ chunkSize
 		) do
+			local yMin = y * chunkSize
+			local yMax = yMin + chunkSize
+			local yPos = math.clamp(farPlaneCFrame.Y, yMin, yMax)
+
 			for z = math.floor(
 				math.min(
 					cameraCFrame.Z,
@@ -163,10 +171,12 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 					continue
 				end
 
+				local zMin = z * chunkSize
+				local zMax = zMin + chunkSize
 				local chunkNearestPoint = Vector3.new(
-					math.clamp(farPlaneCFrame.X, x * chunkSize, x * chunkSize + chunkSize),
-					math.clamp(farPlaneCFrame.Y, y * chunkSize, y * chunkSize + chunkSize),
-					math.clamp(farPlaneCFrame.Z, z * chunkSize, z * chunkSize + chunkSize)
+					xPos,
+					yPos,
+					math.clamp(farPlaneCFrame.Z, zMin, zMax)
 				)
 
 				-- Cut out anything past the far plane or behind the camera
