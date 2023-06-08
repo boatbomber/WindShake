@@ -186,16 +186,12 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 				end
 
 				-- Cut out cells that lie outside a frustum plane
-				if rightNormal:Dot(lookToCell) < 0 then
-					continue
-				end
-				if leftNormal:Dot(lookToCell) > 0 then
-					continue
-				end
-				if topNormal:Dot(lookToCell) < 0 then
-					continue
-				end
-				if bottomNormal:Dot(lookToCell) > 0 then
+				if
+					rightNormal:Dot(lookToCell) < 0
+					or leftNormal:Dot(lookToCell) > 0
+					or topNormal:Dot(lookToCell) < 0
+					or bottomNormal:Dot(lookToCell) > 0
+				then
 					continue
 				end
 
