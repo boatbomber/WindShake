@@ -119,8 +119,6 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 
 	local distThreshold = (cameraPos - farPlaneTopRight).Magnitude
 
-	local checkedKeys = {}
-
 	for x = math.floor(
 		math.min(cameraCFrame.X, farPlaneTopLeft.X, farPlaneTopRight.X, farPlaneBottomLeft.X, farPlaneBottomRight.X)
 			/ chunkSize
@@ -161,11 +159,6 @@ function VectorMap:ForEachObjectInFrustum(camera: Camera, distance: number, call
 				) / chunkSize
 			) do
 				local chunkKey = Vector3.new(x, y, z)
-				if checkedKeys[chunkKey] then
-					continue
-				end
-				checkedKeys[chunkKey] = true
-
 				local chunk = self._map[chunkKey]
 				if not chunk then
 					continue
