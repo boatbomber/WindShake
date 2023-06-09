@@ -24,8 +24,6 @@ local DEFAULT_SETTINGS = Settings.new(script, {
 	WindPower = 0.5,
 })
 
-local HALF_PI = math.pi / 2
-
 -----------------------------------------------------------------------------------------------------------------
 
 local ObjectShakeAddedEvent = Instance.new("BindableEvent")
@@ -35,7 +33,6 @@ local PausedEvent = Instance.new("BindableEvent")
 local ResumedEvent = Instance.new("BindableEvent")
 
 local WindShake = {
-	UpdateHz = 1 / 60,
 	RenderDistance = 150,
 
 	ObjectMetadata = {},
@@ -123,8 +120,9 @@ function WindShake:RemoveObjectShake(object: BasePart)
 	ObjectShakeRemovedEvent:Fire(object)
 end
 
-function WindShake:Update()
+function WindShake:Update(deltaTime: number)
 	local now = os.clock()
+	local halfDeltaTime = deltaTime * 0.5
 
 	debug.profilebegin("WindShake")
 
@@ -138,8 +136,6 @@ function WindShake:Update()
 	local camera = workspace.CurrentCamera
 	local cameraPos = camera.CFrame.Position
 	local distThreshold = self.RenderDistance
-	local baseline = 0.12 + self.UpdateHz
-
 	debug.profilebegin("Calc")
 
 	self.VectorMap:ForEachObjectInView(camera, self.RenderDistance, function(object)
@@ -148,8 +144,9 @@ function WindShake:Update()
 
 		local origin = objMeta.Origin
 		local distance = (cameraPos - object.Position).Magnitude
+		local distanceAlpha = (distance / distThreshold)
 
-		if (now - lastUpdate) > -0.12 * math.cos((distance / distThreshold) * HALF_PI) + baseline then
+		if (now - lastUpdate) > halfDeltaTime * (distanceAlpha * distanceAlpha) + deltaTime then
 			objMeta.LastUpdate = now
 
 			local objSettings = objMeta.Settings
