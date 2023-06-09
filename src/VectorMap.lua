@@ -97,12 +97,11 @@ end
 
 function VectorMap:ForEachObjectInView(camera: Camera, distance: number, callback: (any) -> ())
 	local voxelSize = self._voxelSize
-	local halfVoxelSize = (voxelSize :: number) / 2
 	local cameraCFrame = camera.CFrame
-	local cameraCFrameInverse = cameraCFrame:Inverse()
 	local cameraPos = cameraCFrame.Position
 	local rightVec, upVec = cameraCFrame.RightVector, cameraCFrame.UpVector
 
+	local distance2 = distance / 2
 	local farPlaneHeight2 = math.tan(math.rad(camera.FieldOfView / 2)) * distance
 	local farPlaneWidth2 = farPlaneHeight2 * (camera.ViewportSize.X / camera.ViewportSize.Y)
 	local farPlaneCFrame = cameraCFrame * CFrame.new(0, 0, -distance)
@@ -111,12 +110,12 @@ function VectorMap:ForEachObjectInView(camera: Camera, distance: number, callbac
 	local farPlaneBottomLeft = farPlaneCFrame * Vector3.new(-farPlaneWidth2, -farPlaneHeight2, 0)
 	local farPlaneBottomRight = farPlaneCFrame * Vector3.new(farPlaneWidth2, -farPlaneHeight2, 0)
 
+	local frustumCFrameInverse = (cameraCFrame * CFrame.new(0, 0, -distance2)):Inverse()
+
 	local rightNormal = upVec:Cross(farPlaneBottomRight - cameraPos).Unit
 	local leftNormal = upVec:Cross(farPlaneBottomLeft - cameraPos).Unit
 	local topNormal = rightVec:Cross(cameraPos - farPlaneTopRight).Unit
 	local bottomNormal = rightVec:Cross(cameraPos - farPlaneBottomRight).Unit
-
-	local distThreshold = (cameraPos - farPlaneTopRight).Magnitude
 
 	local minBound =
 		cameraPos:Min(farPlaneTopLeft):Min(farPlaneTopRight):Min(farPlaneBottomLeft):Min(farPlaneBottomRight)
@@ -144,25 +143,23 @@ function VectorMap:ForEachObjectInView(camera: Camera, distance: number, callbac
 				local zMax = zMin + voxelSize
 				local voxelNearestPoint = Vector3.new(xPos, yPos, math.clamp(farPlaneCFrame.Z, zMin, zMax))
 
-				-- Cut out voxel past the far plane or behind the camera
-				local depth = (cameraCFrameInverse * voxelNearestPoint).Z
-				if depth > halfVoxelSize or depth < -halfVoxelSize - distance then
-					continue
-				end
-
-				local lookToCell = voxelNearestPoint - cameraPos
-
-				-- Cheap dist culling for early out
-				if lookToCell.Magnitude > distThreshold then
+				-- Cut out voxel if outside the frustum OBB
+				local relativeToOBB = frustumCFrameInverse * voxelNearestPoint
+				if
+					relativeToOBB.X > farPlaneWidth2 or relativeToOBB.X < -farPlaneWidth2
+					or relativeToOBB.Y > farPlaneHeight2 or relativeToOBB.Y < -farPlaneHeight2
+					or relativeToOBB.Z > distance2 or relativeToOBB.Z < -distance2
+				then
 					continue
 				end
 
 				-- Cut out voxel if it lies outside a frustum plane
+				local lookToVoxel = voxelNearestPoint - cameraPos
 				if
-					rightNormal:Dot(lookToCell) < 0
-					or leftNormal:Dot(lookToCell) > 0
-					or topNormal:Dot(lookToCell) < 0
-					or bottomNormal:Dot(lookToCell) > 0
+					rightNormal:Dot(lookToVoxel) < 0
+					or leftNormal:Dot(lookToVoxel) > 0
+					or topNormal:Dot(lookToVoxel) < 0
+					or bottomNormal:Dot(lookToVoxel) > 0
 				then
 					continue
 				end
