@@ -24,6 +24,8 @@ local DEFAULT_SETTINGS = Settings.new(script, {
 	WindPower = 0.5,
 })
 
+local HALF_PI = math.pi / 2
+
 -----------------------------------------------------------------------------------------------------------------
 
 local ObjectShakeAddedEvent = Instance.new("BindableEvent")
@@ -33,8 +35,7 @@ local PausedEvent = Instance.new("BindableEvent")
 local ResumedEvent = Instance.new("BindableEvent")
 
 local WindShake = {
-	UpdateHz = 1 / 45,
-	ComputeHz = 1 / 30,
+	UpdateHz = 1 / 60,
 	RenderDistance = 150,
 
 	ObjectMetadata = {},
@@ -42,7 +43,9 @@ local WindShake = {
 
 	Handled = 0,
 	Active = 0,
-	LastUpdate = os.clock(),
+
+	_objectTable = table.create(500),
+	_cframeTable = table.create(500),
 
 	ObjectShakeAdded = ObjectShakeAddedEvent.Event,
 	ObjectShakeRemoved = ObjectShakeRemovedEvent.Event,
@@ -122,32 +125,33 @@ end
 
 function WindShake:Update()
 	local now = os.clock()
-	local dt = now - self.LastUpdate
-
-	if dt < self.UpdateHz then
-		return
-	end
-
-	self.LastUpdate = now
 
 	debug.profilebegin("WindShake")
 
-	local step = math.min(1, dt * 8)
+	local objectTable = self._objectTable
+	local cframeTable = self._cframeTable
+	table.clear(objectTable)
+	table.clear(cframeTable)
+
 	local i = 0
-	local updateObjects = table.create(500)
-	local cfTable = table.create(500)
 	local objectMetadata = self.ObjectMetadata
+	local camera = workspace.CurrentCamera
+	local cameraPos = camera.CFrame.Position
+	local distThreshold = self.RenderDistance
+	local baseline = 0.12 + self.UpdateHz
 
 	debug.profilebegin("Calc")
 
-	self.VectorMap:ForEachObjectInView(workspace.CurrentCamera, self.RenderDistance, function(object)
+	self.VectorMap:ForEachObjectInView(camera, self.RenderDistance, function(object)
 		local objMeta = objectMetadata[object]
-		local lastComp = objMeta.LastCompute or 0
+		local lastUpdate = objMeta.LastUpdate or 0
 
 		local origin = objMeta.Origin
-		local current = objMeta.CFrame or origin
+		local distance = (cameraPos - object.Position).Magnitude
 
-		if (now - lastComp) > self.ComputeHz then
+		if (now - lastUpdate) > -0.12 * math.cos((distance / distThreshold) * HALF_PI) + baseline then
+			objMeta.LastUpdate = now
+
 			local objSettings = objMeta.Settings
 
 			local seed = objMeta.Seed
@@ -160,27 +164,20 @@ function WindShake:Update()
 			local offset = object.PivotOffset
 			local worldpivot = origin * offset
 
-			objMeta.Target = (
+			i += 1
+			objectTable[i] = object
+			cframeTable[i] = (
 				worldpivot * CFrame.Angles(rotX, rotY, rotZ)
 				+ objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)
 			) * offset:Inverse()
-
-			objMeta.LastCompute = now
 		end
-
-		current = current:Lerp(objMeta.Target, step)
-		objMeta.CFrame = current
-
-		i += 1
-		updateObjects[i] = object
-		cfTable[i] = current
 	end)
 
-	self.Active = #cfTable
+	self.Active = i
 
 	debug.profileend()
 
-	workspace:BulkMoveTo(updateObjects, cfTable, Enum.BulkMoveMode.FireCFrameChanged)
+	workspace:BulkMoveTo(objectTable, cframeTable, Enum.BulkMoveMode.FireCFrameChanged)
 	debug.profileend()
 end
 
