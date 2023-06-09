@@ -87,7 +87,7 @@ function WindShake:AddObjectShake(object: BasePart, settingsTable: WindShakeSett
 		ChunkKey = self.VectorMap:AddObject(object.Position, object),
 		Settings = Settings.new(object, DEFAULT_SETTINGS),
 
-		Seed = math.random(1000) * 0.1,
+		Seed = math.random(5000) * 0.32,
 		Origin = object.CFrame,
 	}
 
@@ -121,10 +121,11 @@ function WindShake:RemoveObjectShake(object: BasePart)
 end
 
 function WindShake:Update(deltaTime: number)
-	local now = os.clock()
-	local doubleDeltaTime = deltaTime * 2
-
 	debug.profilebegin("WindShake")
+
+	local now = os.clock()
+	local slowerDeltaTime = deltaTime * 2
+	local step = math.min(1, deltaTime * 8)
 
 	local objectTable = self._objectTable
 	local cframeTable = self._cframeTable
@@ -146,11 +147,10 @@ function WindShake:Update(deltaTime: number)
 		local distance = (cameraPos - object.Position).Magnitude
 		local distanceAlpha = (distance / distThreshold)
 
-		if (now - lastUpdate) > deltaTime * (distanceAlpha * distanceAlpha) + doubleDeltaTime then
+		if (now - lastUpdate) > deltaTime * (distanceAlpha * distanceAlpha) + slowerDeltaTime then
 			objMeta.LastUpdate = now
 
 			local objSettings = objMeta.Settings
-
 			local seed = objMeta.Seed
 			local amp = objSettings.WindPower * 0.1
 
@@ -163,10 +163,10 @@ function WindShake:Update(deltaTime: number)
 
 			i += 1
 			objectTable[i] = object
-			cframeTable[i] = (
+			cframeTable[i] = object.CFrame:Lerp((
 				worldpivot * CFrame.Angles(rotX, rotY, rotZ)
 				+ objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)
-			) * offset:Inverse()
+			) * offset:Inverse(), step)
 		end
 	end)
 
