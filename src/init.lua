@@ -122,7 +122,7 @@ end
 
 function WindShake:Update(deltaTime: number)
 	local now = os.clock()
-	local halfDeltaTime = deltaTime * 0.5
+	local doubleDeltaTime = deltaTime * 2
 
 	debug.profilebegin("WindShake")
 
@@ -146,7 +146,7 @@ function WindShake:Update(deltaTime: number)
 		local distance = (cameraPos - object.Position).Magnitude
 		local distanceAlpha = (distance / distThreshold)
 
-		if (now - lastUpdate) > halfDeltaTime * (distanceAlpha * distanceAlpha) + deltaTime then
+		if (now - lastUpdate) > deltaTime * (distanceAlpha * distanceAlpha) + doubleDeltaTime then
 			objMeta.LastUpdate = now
 
 			local objSettings = objMeta.Settings
