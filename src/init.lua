@@ -240,7 +240,7 @@ function WindShake:Init()
 	local windShakeRemoved = CollectionService:GetInstanceRemovedSignal(COLLECTION_TAG)
 	self.RemovedConnection = self:Connect("RemoveObjectShake", windShakeRemoved)
 
-	for _, object in pairs(CollectionService:GetTagged(COLLECTION_TAG)) do
+	for _, object in CollectionService:GetTagged(COLLECTION_TAG) do
 		self:AddObjectShake(object)
 	end
 
@@ -286,7 +286,7 @@ function WindShake:UpdateObjectSettings(object: Instance, settingsTable: WindSha
 		return
 	end
 
-	for key, value in pairs(settingsTable) do
+	for key, value in settingsTable do
 		object:SetAttribute(key, value)
 	end
 
@@ -298,8 +298,8 @@ function WindShake:UpdateAllObjectSettings(settingsTable: WindShakeSettings)
 		return
 	end
 
-	for obj, objMeta in pairs(self.ObjectMetadata) do
-		for key, value in pairs(settingsTable) do
+	for obj, _objMeta in self.ObjectMetadata do
+		for key, value in settingsTable do
 			obj:SetAttribute(key, value)
 		end
 		ObjectShakeUpdatedEvent:Fire(obj)
