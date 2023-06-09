@@ -3,21 +3,21 @@
 local VectorMap = {}
 VectorMap.__index = VectorMap
 
-function VectorMap.new(chunkSize: number?)
+function VectorMap.new(voxelSize: number?)
 	return setmetatable({
-		_chunkSize = chunkSize or 50,
-		_map = {},
+		_voxelSize = voxelSize or 50,
+		_voxels = {},
 	}, VectorMap)
 end
 
-function VectorMap:_debugDrawChunk(chunkKey: Vector3)
+function VectorMap:_debugDrawVoxel(voxelKey: Vector3)
 	local box = Instance.new("Part")
-	box.Name = tostring(chunkKey)
+	box.Name = tostring(voxelKey)
 	box.Anchored = true
 	box.CanCollide = false
 	box.Transparency = 1
-	box.Size = Vector3.one * self._chunkSize
-	box.Position = (chunkKey * self._chunkSize) + (Vector3.one * (self._chunkSize / 2))
+	box.Size = Vector3.one * self._voxelSize
+	box.Position = (voxelKey * self._voxelSize) + (Vector3.one * (self._voxelSize / 2))
 	box.Parent = workspace
 
 	local selection = Instance.new("SelectionBox")
@@ -29,65 +29,65 @@ function VectorMap:_debugDrawChunk(chunkKey: Vector3)
 end
 
 function VectorMap:AddObject(position: Vector3, object: any)
-	local chunkSize = self._chunkSize
-	local chunkKey = Vector3.new(
-		math.floor(position.X / chunkSize),
-		math.floor(position.Y / chunkSize),
-		math.floor(position.Z / chunkSize)
+	local voxelSize = self._voxelSize
+	local voxelKey = Vector3.new(
+		math.floor(position.X / voxelSize),
+		math.floor(position.Y / voxelSize),
+		math.floor(position.Z / voxelSize)
 	)
 
-	local chunk = self._map[chunkKey]
+	local voxel = self._voxels[voxelKey]
 
-	if not chunk then
-		self._map[chunkKey] = { object }
-		return chunkKey
+	if not voxel then
+		self._voxels[voxelKey] = { object }
+		return voxelKey
 	end
 
-	table.insert(chunk, object)
-	return chunkKey
+	table.insert(voxel, object)
+	return voxelKey
 end
 
-function VectorMap:RemoveObject(chunkKey: Vector3, object: any)
-	local chunk = self._map[chunkKey]
+function VectorMap:RemoveObject(voxelKey: Vector3, object: any)
+	local voxel = self._voxels[voxelKey]
 
-	if not chunk then
+	if not voxel then
 		return
 	end
 
-	for index, storedObject in chunk do
+	for index, storedObject in voxel do
 		if storedObject == object then
 			-- Swap remove to avoid shifting
-			local n = #chunk
-			chunk[index] = chunk[n]
-			chunk[n] = nil
+			local n = #voxel
+			voxel[index] = voxel[n]
+			voxel[n] = nil
 			break
 		end
 	end
 
-	if #chunk == 0 then
-		-- Remove empty chunk
-		self._map[chunkKey] = nil
+	if #voxel == 0 then
+		-- Remove empty voxel
+		self._voxels[voxelKey] = nil
 	end
 end
 
-function VectorMap:GetChunk(chunkKey: Vector3)
-	return self._map[chunkKey]
+function VectorMap:GetVoxel(voxelKey: Vector3)
+	return self._voxels[voxelKey]
 end
 
 function VectorMap:ForEachObjectInRegion(top: Vector3, bottom: Vector3, callback: (any) -> ())
-	local chunkSize = self._chunkSize
-	local minx, miny, minz = math.min(bottom.X, top.X), math.min(bottom.Y, top.Y), math.min(bottom.Z, top.Z)
-	local maxx, maxy, maxz = math.max(bottom.X, top.X), math.max(bottom.Y, top.Y), math.max(bottom.Z, top.Z)
+	local voxelSize = self._voxelSize
+	local xMin, yMin, zMin = math.min(bottom.X, top.X), math.min(bottom.Y, top.Y), math.min(bottom.Z, top.Z)
+	local xMax, yMax, zMax = math.max(bottom.X, top.X), math.max(bottom.Y, top.Y), math.max(bottom.Z, top.Z)
 
-	for x = math.floor(minx / chunkSize), math.floor(maxx / chunkSize) do
-		for z = math.floor(minz / chunkSize), math.floor(maxz / chunkSize) do
-			for y = math.floor(miny / chunkSize), math.floor(maxy / chunkSize) do
-				local chunk = self._map[Vector3.new(x, y, z)]
-				if not chunk then
+	for x = math.floor(xMin / voxelSize), math.floor(xMax / voxelSize) do
+		for z = math.floor(zMin / voxelSize), math.floor(zMax / voxelSize) do
+			for y = math.floor(yMin / voxelSize), math.floor(yMax / voxelSize) do
+				local voxel = self._voxels[Vector3.new(x, y, z)]
+				if not voxel then
 					continue
 				end
 
-				for _, object in chunk do
+				for _, object in voxel do
 					callback(object)
 				end
 			end
@@ -96,16 +96,15 @@ function VectorMap:ForEachObjectInRegion(top: Vector3, bottom: Vector3, callback
 end
 
 function VectorMap:ForEachObjectInView(camera: Camera, distance: number, callback: (any) -> ())
-	local chunkSize = self._chunkSize
-	local halfChunkSize = (chunkSize :: number) / 2
+	local voxelSize = self._voxelSize
+	local halfVoxelSize = (voxelSize :: number) / 2
 	local cameraCFrame = camera.CFrame
 	local cameraCFrameInverse = cameraCFrame:Inverse()
 	local cameraPos = cameraCFrame.Position
 	local rightVec, upVec = cameraCFrame.RightVector, cameraCFrame.UpVector
-	local aspectRatio = camera.ViewportSize.X / camera.ViewportSize.Y
 
 	local farPlaneHeight2 = math.tan(math.rad(camera.FieldOfView / 2)) * distance
-	local farPlaneWidth2 = farPlaneHeight2 * aspectRatio
+	local farPlaneWidth2 = farPlaneHeight2 * (camera.ViewportSize.X / camera.ViewportSize.Y)
 	local farPlaneCFrame = cameraCFrame * CFrame.new(0, 0, -distance)
 	local farPlaneTopLeft = farPlaneCFrame * Vector3.new(-farPlaneWidth2, farPlaneHeight2, 0)
 	local farPlaneTopRight = farPlaneCFrame * Vector3.new(farPlaneWidth2, farPlaneHeight2, 0)
@@ -119,73 +118,46 @@ function VectorMap:ForEachObjectInView(camera: Camera, distance: number, callbac
 
 	local distThreshold = (cameraPos - farPlaneTopRight).Magnitude
 
-	for x = math.floor(
-		math.min(cameraCFrame.X, farPlaneTopLeft.X, farPlaneTopRight.X, farPlaneBottomLeft.X, farPlaneBottomRight.X)
-			/ chunkSize
-	), math.floor(
-		math.max(cameraCFrame.X, farPlaneTopLeft.X, farPlaneTopRight.X, farPlaneBottomLeft.X, farPlaneBottomRight.X)
-			/ chunkSize
-	) do
-		local xMin = x * chunkSize
-		local xMax = xMin + chunkSize
+	local minBound =
+		cameraPos:Min(farPlaneTopLeft):Min(farPlaneTopRight):Min(farPlaneBottomLeft):Min(farPlaneBottomRight)
+	local maxBound =
+		cameraPos:Max(farPlaneTopLeft):Max(farPlaneTopRight):Max(farPlaneBottomLeft):Max(farPlaneBottomRight)
+
+	for x = math.floor(minBound.X / voxelSize), math.floor(maxBound.X / voxelSize) do
+		local xMin = x * voxelSize
+		local xMax = xMin + voxelSize
 		local xPos = math.clamp(farPlaneCFrame.X, xMin, xMax)
 
-		for y = math.floor(
-			math.min(cameraCFrame.Y, farPlaneTopLeft.Y, farPlaneTopRight.Y, farPlaneBottomLeft.Y, farPlaneBottomRight.Y)
-				/ chunkSize
-		), math.floor(
-			math.max(cameraCFrame.Y, farPlaneTopLeft.Y, farPlaneTopRight.Y, farPlaneBottomLeft.Y, farPlaneBottomRight.Y)
-				/ chunkSize
-		) do
-			local yMin = y * chunkSize
-			local yMax = yMin + chunkSize
+		for y = math.floor(minBound.Y / voxelSize), math.floor(maxBound.Y / voxelSize) do
+			local yMin = y * voxelSize
+			local yMax = yMin + voxelSize
 			local yPos = math.clamp(farPlaneCFrame.Y, yMin, yMax)
 
-			for z = math.floor(
-				math.min(
-					cameraCFrame.Z,
-					farPlaneTopLeft.Z,
-					farPlaneTopRight.Z,
-					farPlaneBottomLeft.Z,
-					farPlaneBottomRight.Z
-				) / chunkSize
-			), math.floor(
-				math.max(
-					cameraCFrame.Z,
-					farPlaneTopLeft.Z,
-					farPlaneTopRight.Z,
-					farPlaneBottomLeft.Z,
-					farPlaneBottomRight.Z
-				) / chunkSize
-			) do
-				local chunkKey = Vector3.new(x, y, z)
-				local chunk = self._map[chunkKey]
-				if not chunk then
+			for z = math.floor(minBound.Z / voxelSize), math.floor(maxBound.Z / voxelSize) do
+				local voxelKey = Vector3.new(x, y, z)
+				local voxel = self._voxels[voxelKey]
+				if not voxel then
 					continue
 				end
 
-				local zMin = z * chunkSize
-				local zMax = zMin + chunkSize
-				local chunkNearestPoint = Vector3.new(
-					xPos,
-					yPos,
-					math.clamp(farPlaneCFrame.Z, zMin, zMax)
-				)
+				local zMin = z * voxelSize
+				local zMax = zMin + voxelSize
+				local voxelNearestPoint = Vector3.new(xPos, yPos, math.clamp(farPlaneCFrame.Z, zMin, zMax))
 
-				-- Cut out anything past the far plane or behind the camera
-				local depth = (cameraCFrameInverse * chunkNearestPoint).Z
-				if depth > halfChunkSize or depth < -halfChunkSize - distance then
+				-- Cut out voxel past the far plane or behind the camera
+				local depth = (cameraCFrameInverse * voxelNearestPoint).Z
+				if depth > halfVoxelSize or depth < -halfVoxelSize - distance then
 					continue
 				end
 
-				local lookToCell = chunkNearestPoint - cameraPos
+				local lookToCell = voxelNearestPoint - cameraPos
 
 				-- Cheap dist culling for early out
 				if lookToCell.Magnitude > distThreshold then
 					continue
 				end
 
-				-- Cut out cells that lie outside a frustum plane
+				-- Cut out voxel if it lies outside a frustum plane
 				if
 					rightNormal:Dot(lookToCell) < 0
 					or leftNormal:Dot(lookToCell) > 0
@@ -195,9 +167,9 @@ function VectorMap:ForEachObjectInView(camera: Camera, distance: number, callbac
 					continue
 				end
 
-				-- self:_debugDrawChunk(chunkKey)
+				-- self:_debugDrawVoxel(voxelKey)
 
-				for _, object in chunk do
+				for _, object in voxel do
 					callback(object)
 				end
 			end
@@ -206,7 +178,7 @@ function VectorMap:ForEachObjectInView(camera: Camera, distance: number, callbac
 end
 
 function VectorMap:ClearAll()
-	self._map = {}
+	self._voxels = {}
 end
 
 return VectorMap
