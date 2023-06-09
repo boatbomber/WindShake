@@ -102,7 +102,7 @@ function VectorMap:ForEachObjectInView(camera: Camera, distance: number, callbac
 	local rightVec, upVec = cameraCFrame.RightVector, cameraCFrame.UpVector
 
 	local distance2 = distance / 2
-	local farPlaneHeight2 = math.tan(math.rad(camera.FieldOfView / 2)) * distance
+	local farPlaneHeight2 = math.tan(math.rad((camera.FieldOfView + 5) / 2)) * distance
 	local farPlaneWidth2 = farPlaneHeight2 * (camera.ViewportSize.X / camera.ViewportSize.Y)
 	local farPlaneCFrame = cameraCFrame * CFrame.new(0, 0, -distance)
 	local farPlaneTopLeft = farPlaneCFrame * Vector3.new(-farPlaneWidth2, farPlaneHeight2, 0)
