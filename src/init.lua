@@ -163,10 +163,13 @@ function WindShake:Update(deltaTime: number)
 
 			i += 1
 			objectTable[i] = object
-			cframeTable[i] = object.CFrame:Lerp((
-				worldpivot * CFrame.Angles(rotX, rotY, rotZ)
-				+ objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)
-			) * offset:Inverse(), step)
+			cframeTable[i] = object.CFrame:Lerp(
+				(
+					worldpivot * CFrame.Angles(rotX, rotY, rotZ)
+					+ objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)
+				) * offset:Inverse(),
+				step
+			)
 		end
 	end)
 

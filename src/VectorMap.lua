@@ -146,9 +146,12 @@ function VectorMap:ForEachObjectInView(camera: Camera, distance: number, callbac
 				-- Cut out voxel if outside the frustum OBB
 				local relativeToOBB = frustumCFrameInverse * voxelNearestPoint
 				if
-					relativeToOBB.X > farPlaneWidth2 or relativeToOBB.X < -farPlaneWidth2
-					or relativeToOBB.Y > farPlaneHeight2 or relativeToOBB.Y < -farPlaneHeight2
-					or relativeToOBB.Z > distance2 or relativeToOBB.Z < -distance2
+					relativeToOBB.X > farPlaneWidth2
+					or relativeToOBB.X < -farPlaneWidth2
+					or relativeToOBB.Y > farPlaneHeight2
+					or relativeToOBB.Y < -farPlaneHeight2
+					or relativeToOBB.Z > distance2
+					or relativeToOBB.Z < -distance2
 				then
 					continue
 				end
