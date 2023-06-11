@@ -40,7 +40,6 @@ local WindShake = {
 
 	Handled = 0,
 	Active = 0,
-	IsParallel = script:GetActor() ~= nil,
 
 	_objectTable = table.create(500),
 	_cframeTable = table.create(500),
@@ -63,15 +62,6 @@ function WindShake:Connect(funcName: string, event: RBXScriptSignal): RBXScriptC
 	assert(typeof(callback) == "function", "Unknown function: " .. funcName)
 
 	return event:Connect(function(...)
-		return callback(self, ...)
-	end)
-end
-
-function WindShake:ConnectParallel(funcName: string, event: RBXScriptSignal): RBXScriptConnection
-	local callback = self[funcName]
-	assert(typeof(callback) == "function", "Unknown function: " .. funcName)
-
-	return event:ConnectParallel(function(...)
 		return callback(self, ...)
 	end)
 end
@@ -186,10 +176,6 @@ function WindShake:Update(deltaTime: number)
 
 	debug.profileend()
 
-	if self.IsParallel then
-		task.synchronize()
-	end
-
 	workspace:BulkMoveTo(objectTable, cframeTable, Enum.BulkMoveMode.FireCFrameChanged)
 end
 
@@ -213,11 +199,7 @@ function WindShake:Resume()
 	end
 
 	-- Connect updater
-	if self.IsParallel then
-		self.UpdateConnection = self:ConnectParallel("Update", RunService.Heartbeat)
-	else
-		self.UpdateConnection = self:Connect("Update", RunService.Heartbeat)
-	end
+	self.UpdateConnection = self:Connect("Update", RunService.Heartbeat)
 
 	ResumedEvent:Fire()
 end
