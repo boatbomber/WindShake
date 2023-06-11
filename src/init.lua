@@ -123,6 +123,8 @@ end
 function WindShake:Update(deltaTime: number)
 	debug.profilebegin("WindShake")
 
+	debug.profilebegin("Update")
+
 	local now = os.clock()
 	local slowerDeltaTime = deltaTime * 2
 	local step = math.min(1, deltaTime * 8)
@@ -143,7 +145,8 @@ function WindShake:Update(deltaTime: number)
 		local lastUpdate = objMeta.LastUpdate or 0
 
 		local origin = objMeta.Origin
-		local distance = (cameraPos - object.Position).Magnitude
+		local objectCFrame = object.CFrame
+		local distance = (cameraPos - objectCFrame.Position).Magnitude
 		local distanceAlpha = (distance / distThreshold)
 
 		if (now - lastUpdate) > deltaTime * (distanceAlpha * distanceAlpha) + slowerDeltaTime then
@@ -157,12 +160,12 @@ function WindShake:Update(deltaTime: number)
 			local rotX = math.noise(freq, 0, seed) * amp
 			local rotY = math.noise(freq, 0, -seed) * amp
 			local rotZ = math.noise(freq, 0, seed + seed) * amp
-			local offset = object.PivotOffset
+			local offset = objSettings.PivotOffset
 			local worldpivot = origin * offset
 
 			i += 1
 			objectTable[i] = object
-			cframeTable[i] = object.CFrame:Lerp(
+			cframeTable[i] = objectCFrame:Lerp(
 				(
 					worldpivot * CFrame.Angles(rotX, rotY, rotZ)
 					+ objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)
@@ -177,6 +180,8 @@ function WindShake:Update(deltaTime: number)
 	debug.profileend()
 
 	workspace:BulkMoveTo(objectTable, cframeTable, Enum.BulkMoveMode.FireCFrameChanged)
+
+	debug.profileend()
 end
 
 function WindShake:Pause()
