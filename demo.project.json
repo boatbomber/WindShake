@@ -9,13 +9,10 @@
         "StarterPlayerScripts": {
           "$className": "StarterPlayerScripts",
 
-          "WindActor": {
-            "$className": "Actor",
-            "WindController": {
-              "$path": "demo/Client/WindController",
-              "WindShake": {
-                "$path": "src"
-              }
+          "WindController": {
+            "$path": "demo/Client/WindController",
+            "WindShake": {
+              "$path": "src"
             }
           }
         }
