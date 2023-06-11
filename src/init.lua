@@ -40,7 +40,7 @@ local WindShake = {
 
 	Handled = 0,
 	Active = 0,
-	IsParallel = false,
+	IsParallel = script:GetActor() ~= nil,
 
 	_objectTable = table.create(500),
 	_cframeTable = table.create(500),
@@ -213,22 +213,10 @@ function WindShake:Resume()
 	end
 
 	-- Connect updater
-	local updateSuccess, updateResponse = pcall(function()
-		self:ConnectParallel("Update", RunService.Heartbeat)
-	end)
-	if updateSuccess then
-		self.UpdateConnection = updateResponse
-		self.IsParallel = true
+	if self.IsParallel then
+		self.UpdateConnection = self:ConnectParallel("Update", RunService.Heartbeat)
 	else
-		local lowercaseResponse = string.lower(updateResponse)
-		if string.find(lowercaseResponse, "actor") or string.find(lowercaseResponse, "parallel") then
-			-- The user has not placed their initializing script into an Actor,
-			-- so we can't use parallel connections
-			self.IsParallel = false
-			self.UpdateConnection = self:Connect("Update", RunService.Heartbeat)
-		else
-			warn("WindShake failed to start:\n", updateResponse)
-		end
+		self.UpdateConnection = self:Connect("Update", RunService.Heartbeat)
 	end
 
 	ResumedEvent:Fire()
