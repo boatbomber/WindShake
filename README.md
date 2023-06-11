@@ -34,16 +34,6 @@ https://www.roblox.com/games/6342320514/Wind-Demo
 ## Properties
 
 ```Lua
-number WindShake.UpdateHz
-```
-*Sets the frequency of the object update stepper. Default 1/45*
-
-```Lua
-number WindShake.ComputeHz
-```
-*Sets the frequency of the object compute stepper. Default 1/30*
-
-```Lua
 number WindShake.RenderDistance
 ```
 *Sets the render distance for active objects in studs. Default 150*
