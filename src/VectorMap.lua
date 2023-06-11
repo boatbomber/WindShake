@@ -132,9 +132,10 @@ function VectorMap:ForEachObjectInView(camera: Camera, distance: number, callbac
 			local yMax = yMin + voxelSize
 			local yPos = math.clamp(farPlaneCFrame.Y, yMin, yMax)
 
+			local foundIntersection = false
 			for z = math.floor(minBound.Z / voxelSize), math.floor(maxBound.Z / voxelSize) do
-				local voxelKey = Vector3.new(x, y, z)
-				local voxel = self._voxels[voxelKey]
+
+				local voxel = self._voxels[Vector3.new(x, y, z)]
 				if not voxel then
 					continue
 				end
@@ -153,7 +154,13 @@ function VectorMap:ForEachObjectInView(camera: Camera, distance: number, callbac
 					or relativeToOBB.Z > distance2
 					or relativeToOBB.Z < -distance2
 				then
-					continue
+					if foundIntersection then
+						-- Because the frustum is convex, there will never be another
+						-- cell on this line after we exited the intersections
+						break
+					else
+						continue
+					end
 				end
 
 				-- Cut out voxel if it lies outside a frustum plane
@@ -164,10 +171,18 @@ function VectorMap:ForEachObjectInView(camera: Camera, distance: number, callbac
 					or topNormal:Dot(lookToVoxel) < 0
 					or bottomNormal:Dot(lookToVoxel) > 0
 				then
-					continue
+					if foundIntersection then
+						-- Because the frustum is convex, there will never be another
+						-- cell on this line after we exited the intersections
+						break
+					else
+						continue
+					end
 				end
 
 				-- self:_debugDrawVoxel(voxelKey)
+
+				foundIntersection = true
 
 				for _, object in voxel do
 					callback(object)
