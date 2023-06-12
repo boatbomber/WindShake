@@ -20,6 +20,7 @@ function Settings.new(object: Instance, base)
 	inst.WindSpeed = typeof(WindSpeed) == SettingTypes.WindSpeed and WindSpeed or base.WindSpeed
 	inst.WindDirection = typeof(WindDirection) == SettingTypes.WindDirection and WindDirection or base.WindDirection
 	inst.PivotOffset = if object:IsA("BasePart") then object.PivotOffset else (base.PivotOffset or CFrame.new())
+	inst.PivotOffsetInverse = inst.PivotOffset:Inverse()
 
 	-- Update settings on event
 
@@ -42,6 +43,7 @@ function Settings.new(object: Instance, base)
 	if object:IsA("BasePart") then
 		PivotConnection = object:GetPropertyChangedSignal("PivotOffset"):Connect(function()
 			inst.PivotOffset = object.PivotOffset
+			inst.PivotOffsetInverse = inst.PivotOffset:Inverse()
 		end)
 	end
 

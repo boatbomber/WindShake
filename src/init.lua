@@ -163,6 +163,7 @@ function WindShake:Update(deltaTime: number)
 			local rotY = math.noise(freq, 0, -seed) * amp
 			local rotZ = math.noise(freq, 0, seed + seed) * amp
 			local offset = objSettings.PivotOffset
+			local offsetInverse = objSettings.PivotOffsetInverse
 			local worldpivot = origin * offset
 
 			i += 1
@@ -171,7 +172,7 @@ function WindShake:Update(deltaTime: number)
 				(
 					worldpivot * CFrame.Angles(rotX, rotY, rotZ)
 					+ objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)
-				) * offset:Inverse(),
+				) * offsetInverse,
 				step
 			)
 		end
