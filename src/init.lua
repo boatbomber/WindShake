@@ -141,6 +141,7 @@ function WindShake:Update(deltaTime: number)
 	local camera = workspace.CurrentCamera
 	local cameraPos = camera.CFrame.Position
 	local distThreshold = self.RenderDistance
+	local maxRefreshRate = self.MaxRefreshRate
 
 	self.VectorMap:ForEachObjectInView(camera, self.RenderDistance, function(object)
 		local objMeta = objectMetadata[object]
@@ -152,7 +153,7 @@ function WindShake:Update(deltaTime: number)
 		local distanceAlpha = (distance / distThreshold)
 		local jitter = (1 / math.random(60, 120))
 
-		if (now - lastUpdate) + jitter > math.max(self.MaxRefreshRate, deltaTime * (distanceAlpha * distanceAlpha) + slowerDeltaTime) then
+		if (now - lastUpdate) + jitter > slowerDeltaTime * (distanceAlpha * distanceAlpha) + maxRefreshRate then
 			objMeta.LastUpdate = now
 
 			local objSettings = objMeta.Settings
