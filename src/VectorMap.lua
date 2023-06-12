@@ -122,70 +122,92 @@ function VectorMap:ForEachObjectInView(camera: Camera, distance: number, callbac
 	local maxBound =
 		cameraPos:Max(farPlaneTopLeft):Max(farPlaneTopRight):Max(farPlaneBottomLeft):Max(farPlaneBottomRight)
 
-	for x = math.floor(minBound.X / voxelSize), math.floor(maxBound.X / voxelSize) do
+	minBound = Vector3.new(
+		math.floor(minBound.X / voxelSize),
+		math.floor(minBound.Y / voxelSize),
+		math.floor(minBound.Z / voxelSize)
+	)
+	maxBound = Vector3.new(
+		math.floor(maxBound.X / voxelSize),
+		math.floor(maxBound.Y / voxelSize),
+		math.floor(maxBound.Z / voxelSize)
+	)
+
+	local function isPointInView(point: Vector3): boolean
+		-- Check if point lies outside frustum OBB
+		local relativeToOBB = frustumCFrameInverse * point
+		if
+			relativeToOBB.X > farPlaneWidth2
+			or relativeToOBB.X < -farPlaneWidth2
+			or relativeToOBB.Y > farPlaneHeight2
+			or relativeToOBB.Y < -farPlaneHeight2
+			or relativeToOBB.Z > distance2
+			or relativeToOBB.Z < -distance2
+		then
+			return false
+		end
+
+		-- Check if point lies outside a frustum plane
+		local lookToCell = point - cameraPos
+		if
+			rightNormal:Dot(lookToCell) < 0
+			or leftNormal:Dot(lookToCell) > 0
+			or topNormal:Dot(lookToCell) < 0
+			or bottomNormal:Dot(lookToCell) > 0
+		then
+			return false
+		end
+
+		return true
+	end
+
+	for x = minBound.X, maxBound.X do
 		local xMin = x * voxelSize
 		local xMax = xMin + voxelSize
 		local xPos = math.clamp(farPlaneCFrame.X, xMin, xMax)
 
-		for y = math.floor(minBound.Y / voxelSize), math.floor(maxBound.Y / voxelSize) do
+		for y = minBound.Y, maxBound.Y do
 			local yMin = y * voxelSize
 			local yMax = yMin + voxelSize
 			local yPos = math.clamp(farPlaneCFrame.Y, yMin, yMax)
 
-			local foundIntersection = false
-			for z = math.floor(minBound.Z / voxelSize), math.floor(maxBound.Z / voxelSize) do
-
-				local voxel = self._voxels[Vector3.new(x, y, z)]
-				if not voxel then
-					continue
-				end
-
+			for z = minBound.Z, maxBound.Z do
 				local zMin = z * voxelSize
 				local zMax = zMin + voxelSize
+
 				local voxelNearestPoint = Vector3.new(xPos, yPos, math.clamp(farPlaneCFrame.Z, zMin, zMax))
+				if isPointInView(voxelNearestPoint) then
+					-- Found the first in frustum, now binary search for the last
+					local entry, exit = z, minBound.Z - 1
+					local left = z
+					local right = maxBound.Z
 
-				-- Cut out voxel if outside the frustum OBB
-				local relativeToOBB = frustumCFrameInverse * voxelNearestPoint
-				if
-					relativeToOBB.X > farPlaneWidth2
-					or relativeToOBB.X < -farPlaneWidth2
-					or relativeToOBB.Y > farPlaneHeight2
-					or relativeToOBB.Y < -farPlaneHeight2
-					or relativeToOBB.Z > distance2
-					or relativeToOBB.Z < -distance2
-				then
-					if foundIntersection then
-						-- Because the frustum is convex, there will never be another
-						-- cell on this line after we exited the intersections
-						break
-					else
-						continue
+					while left <= right do
+						local mid = math.floor((left + right) / 2)
+						local midPos = Vector3.new(
+							xPos,
+							yPos,
+							math.clamp(farPlaneCFrame.Z, mid * voxelSize, mid * voxelSize + voxelSize)
+						)
+
+						if isPointInView(midPos) then
+							exit = mid
+							left = mid + 1
+						else
+							right = mid - 1
+						end
 					end
-				end
 
-				-- Cut out voxel if it lies outside a frustum plane
-				local lookToVoxel = voxelNearestPoint - cameraPos
-				if
-					rightNormal:Dot(lookToVoxel) < 0
-					or leftNormal:Dot(lookToVoxel) > 0
-					or topNormal:Dot(lookToVoxel) < 0
-					or bottomNormal:Dot(lookToVoxel) > 0
-				then
-					if foundIntersection then
-						-- Because the frustum is convex, there will never be another
-						-- cell on this line after we exited the intersections
-						break
-					else
-						continue
+					for fillZ = entry, exit do
+						local voxel = self._voxels[Vector3.new(x, y, fillZ)]
+						if voxel then
+							for _, object in voxel do
+								callback(object)
+							end
+						end
 					end
-				end
 
-				-- self:_debugDrawVoxel(voxelKey)
-
-				foundIntersection = true
-
-				for _, object in voxel do
-					callback(object)
+					break
 				end
 			end
 		end
