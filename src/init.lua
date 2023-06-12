@@ -89,6 +89,7 @@ function WindShake:AddObjectShake(object: BasePart, settingsTable: WindShakeSett
 
 		Seed = math.random(5000) * 0.32,
 		Origin = object.CFrame,
+		LastUpdate = os.clock() - (math.random(10, 100) / math.random(5, 60)),
 	}
 
 	if settingsTable then
