@@ -52,8 +52,8 @@ SpeedInput.FocusLost:Connect(function()
 	if newSpeed then
 		WIND_SPEED = math.clamp(newSpeed, 0, 50)
 		WindLines.Speed = WIND_SPEED
-		WindShake:UpdateAllObjectSettings({ Speed = WIND_SPEED })
-		WindShake:SetDefaultSettings({ Speed = WIND_SPEED })
+		WindShake:UpdateAllObjectSettings({ WindSpeed = WIND_SPEED })
+		WindShake:SetDefaultSettings({ WindSpeed = WIND_SPEED })
 	end
 	SpeedInput.Text = string.format("Wind Speed: %.1f", WIND_SPEED)
 end)
@@ -74,8 +74,8 @@ PowerInput.FocusLost:Connect(function()
 	local newPower = tonumber(PowerInput.Text:match("[%d%.]+"))
 	if newPower then
 		WIND_POWER = math.clamp(newPower, 0, 10)
-		WindShake:UpdateAllObjectSettings({ Power = WIND_POWER })
-		WindShake:SetDefaultSettings({ Power = WIND_POWER })
+		WindShake:UpdateAllObjectSettings({ WindPower = WIND_POWER })
+		WindShake:SetDefaultSettings({ WindPower = WIND_POWER })
 	end
 	PowerInput.Text = string.format("Wind Power: %.1f", WIND_POWER)
 end)
@@ -103,8 +103,8 @@ DirInput.FocusLost:Connect(function()
 	if newDir then
 		WIND_DIRECTION = newDir
 		WindLines.Direction = newDir
-		WindShake:UpdateAllObjectSettings({ Direction = newDir })
-		WindShake:SetDefaultSettings({ Direction = newDir })
+		WindShake:UpdateAllObjectSettings({ WindDirection = newDir })
+		WindShake:SetDefaultSettings({ WindDirection = newDir })
 	end
 
 	DirInput.Text =
