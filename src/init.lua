@@ -90,7 +90,7 @@ function WindShake:AddObjectShake(object: BasePart, settingsTable: WindShakeSett
 
 		Seed = math.random(5000) * 0.32,
 		Origin = object.CFrame,
-		LastUpdate = os.clock() - (math.random(10, 100) / math.random(5, 60)),
+		LastUpdate = os.clock(),
 	}
 
 	if settingsTable then
@@ -150,8 +150,9 @@ function WindShake:Update(deltaTime: number)
 		local objectCFrame = object.CFrame
 		local distance = (cameraPos - objectCFrame.Position).Magnitude
 		local distanceAlpha = (distance / distThreshold)
+		local jitter = (1 / math.random(60, 120))
 
-		if (now - lastUpdate) > math.max(self.MaxRefreshRate, deltaTime * (distanceAlpha * distanceAlpha) + slowerDeltaTime) then
+		if (now - lastUpdate) + jitter > math.max(self.MaxRefreshRate, deltaTime * (distanceAlpha * distanceAlpha) + slowerDeltaTime) then
 			objMeta.LastUpdate = now
 
 			local objSettings = objMeta.Settings
