@@ -38,6 +38,11 @@ number WindShake.RenderDistance
 ```
 *Sets the render distance for active objects in studs. Default 150*
 
+```Lua
+number WindShake.MaxRefreshRate
+```
+*Sets the maximum dynamic refresh rate for active objects in seconds. Default 1/60*
+
 
 ## Functions
 

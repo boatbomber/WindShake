@@ -34,6 +34,7 @@ local ResumedEvent = Instance.new("BindableEvent")
 
 local WindShake = {
 	RenderDistance = 150,
+	MaxRefreshRate = 1/60,
 
 	ObjectMetadata = {},
 	VectorMap = VectorMap.new(),
@@ -150,7 +151,7 @@ function WindShake:Update(deltaTime: number)
 		local distance = (cameraPos - objectCFrame.Position).Magnitude
 		local distanceAlpha = (distance / distThreshold)
 
-		if (now - lastUpdate) > deltaTime * (distanceAlpha * distanceAlpha) + slowerDeltaTime then
+		if (now - lastUpdate) > math.max(self.MaxRefreshRate, deltaTime * (distanceAlpha * distanceAlpha) + slowerDeltaTime) then
 			objMeta.LastUpdate = now
 
 			local objSettings = objMeta.Settings
