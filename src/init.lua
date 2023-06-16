@@ -221,8 +221,6 @@ end
 function WindShake:Init()
 	if self.Initialized then
 		return
-	else
-		self.Initialized = true
 	end
 
 	-- Define attributes if they're undefined.
@@ -244,7 +242,8 @@ function WindShake:Init()
 
 	-- Clear any old stuff.
 	self:Cleanup()
-
+	self.Initialized = true
+	
 	-- Wire up tag listeners.
 	local windShakeAdded = CollectionService:GetInstanceAddedSignal(COLLECTION_TAG)
 	self.AddedConnection = self:Connect("AddObjectShake", windShakeAdded)
