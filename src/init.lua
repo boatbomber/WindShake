@@ -42,8 +42,8 @@ local WindShake = {
 	Handled = 0,
 	Active = 0,
 
-	_objectTable = table.create(500),
-	_cframeTable = table.create(500),
+	_partList = table.create(500),
+	_cframeList = table.create(500),
 
 	ObjectShakeAdded = ObjectShakeAddedEvent.Event,
 	ObjectShakeRemoved = ObjectShakeRemovedEvent.Event,
@@ -133,10 +133,10 @@ function WindShake:Update(deltaTime: number)
 
 	-- Reuse tables to avoid garbage collection
 	local i = 0
-	local objectTable = self._objectTable
-	local cframeTable = self._cframeTable
-	table.clear(objectTable)
-	table.clear(cframeTable)
+	local partList = self._partList
+	local cframeList = self._cframeList
+	table.clear(partList)
+	table.clear(cframeList)
 
 	-- Cache hot values
 	local objectMetadata = self.ObjectMetadata
@@ -170,8 +170,8 @@ function WindShake:Update(deltaTime: number)
 		local freq = now * (objSettings.WindSpeed * 0.08)
 
 		i += 1
-		objectTable[i] = object
-		cframeTable[i] = objectCFrame:Lerp(
+		partList[i] = object
+		cframeList[i] = objectCFrame:Lerp(
 			(
 				(objMeta.Origin * objSettings.PivotOffset)
 					* CFrame.Angles(
@@ -189,7 +189,7 @@ function WindShake:Update(deltaTime: number)
 
 	debug.profileend()
 
-	workspace:BulkMoveTo(objectTable, cframeTable, Enum.BulkMoveMode.FireCFrameChanged)
+	workspace:BulkMoveTo(partList, cframeList, Enum.BulkMoveMode.FireCFrameChanged)
 
 	debug.profileend()
 end
