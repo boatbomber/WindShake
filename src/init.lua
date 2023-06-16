@@ -34,7 +34,7 @@ local ResumedEvent = Instance.new("BindableEvent")
 
 local WindShake = {
 	RenderDistance = 150,
-	MaxRefreshRate = 1/60,
+	MaxRefreshRate = 1 / 60,
 
 	ObjectMetadata = {},
 	VectorMap = VectorMap.new(),
@@ -131,55 +131,58 @@ function WindShake:Update(deltaTime: number)
 	local slowerDeltaTime = deltaTime * 3
 	local step = math.min(1, deltaTime * 5)
 
+	-- Reuse tables to avoid garbage collection
+	local i = 0
 	local objectTable = self._objectTable
 	local cframeTable = self._cframeTable
 	table.clear(objectTable)
 	table.clear(cframeTable)
 
-	local i = 0
+	-- Cache hot values
 	local objectMetadata = self.ObjectMetadata
 	local camera = workspace.CurrentCamera
 	local cameraPos = camera.CFrame.Position
-	local distThreshold = self.RenderDistance
+	local renderDistance = self.RenderDistance
 	local maxRefreshRate = self.MaxRefreshRate
 
-	self.VectorMap:ForEachObjectInView(camera, self.RenderDistance, function(object)
+	-- Update objects in view at their respective refresh rates
+	self.VectorMap:ForEachObjectInView(camera, renderDistance, function(object)
 		local objMeta = objectMetadata[object]
 		local lastUpdate = objMeta.LastUpdate or 0
 
-		local origin = objMeta.Origin
+		-- Determine if the object refresh rate
 		local objectCFrame = object.CFrame
-		local distance = (cameraPos - objectCFrame.Position).Magnitude
-		local distanceAlpha = (distance / distThreshold)
+		local distanceAlpha = ((cameraPos - objectCFrame.Position).Magnitude / renderDistance)
 		local distanceAlphaSq = distanceAlpha * distanceAlpha
 		local jitter = (1 / math.random(60, 120))
-		local elapsed = now - lastUpdate
+		local refreshRate = (slowerDeltaTime * distanceAlphaSq) + maxRefreshRate
 
-		if elapsed + jitter > (slowerDeltaTime * distanceAlphaSq) + maxRefreshRate then
-			objMeta.LastUpdate = now
-
-			local objSettings = objMeta.Settings
-			local seed = objMeta.Seed
-			local amp = objSettings.WindPower * 0.1
-
-			local freq = now * (objSettings.WindSpeed * 0.08)
-			local rotX = math.noise(freq, 0, seed) * amp
-			local rotY = math.noise(freq, 0, -seed) * amp
-			local rotZ = math.noise(freq, 0, seed + seed) * amp
-			local offset = objSettings.PivotOffset
-			local offsetInverse = objSettings.PivotOffsetInverse
-			local worldpivot = origin * offset
-
-			i += 1
-			objectTable[i] = object
-			cframeTable[i] = objectCFrame:Lerp(
-				(
-					worldpivot * CFrame.Angles(rotX, rotY, rotZ)
-					+ objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)
-				) * offsetInverse,
-				math.clamp(step + (distanceAlphaSq), 0.1, 0.9)
-			)
+		if (now - lastUpdate) + jitter <= refreshRate then
+			-- It is not yet time to update
+			return
 		end
+
+		objMeta.LastUpdate = now
+
+		local objSettings = objMeta.Settings
+		local seed = objMeta.Seed
+		local amp = objSettings.WindPower * 0.1
+		local freq = now * (objSettings.WindSpeed * 0.08)
+
+		i += 1
+		objectTable[i] = object
+		cframeTable[i] = objectCFrame:Lerp(
+			(
+				(objMeta.Origin * objSettings.PivotOffset)
+					* CFrame.Angles(
+						math.noise(freq, 0, seed) * amp,
+						math.noise(freq, 0, -seed) * amp,
+						math.noise(freq, 0, seed + seed) * amp
+					)
+				+ objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)
+			) * objSettings.PivotOffsetInverse,
+			math.clamp(step + distanceAlphaSq, 0.1, 0.9)
+		)
 	end)
 
 	self.Active = i
@@ -241,7 +244,7 @@ function WindShake:Init()
 	-- Clear any old stuff.
 	self:Cleanup()
 	self.Initialized = true
-	
+
 	-- Wire up tag listeners.
 	local windShakeAdded = CollectionService:GetInstanceAddedSignal(COLLECTION_TAG)
 	self.AddedConnection = self:Connect("AddObjectShake", windShakeAdded)
