@@ -1,7 +1,7 @@
 local WIND_DIRECTION = Vector3.new(1, 0, 0.3)
 local WIND_SPEED = 20
 local WIND_POWER = 0.5
-local SHAKE_RADIUS = 120
+local SHAKE_DISTANCE = 150
 
 local WindLines = require(script.WindLines)
 local WindShake = require(script.WindShake)
@@ -52,8 +52,8 @@ SpeedInput.FocusLost:Connect(function()
 	if newSpeed then
 		WIND_SPEED = math.clamp(newSpeed, 0, 50)
 		WindLines.Speed = WIND_SPEED
-		WindShake:UpdateAllObjectSettings({ Speed = WIND_SPEED })
-		WindShake:SetDefaultSettings({ Speed = WIND_SPEED })
+		WindShake:UpdateAllObjectSettings({ WindSpeed = WIND_SPEED })
+		WindShake:SetDefaultSettings({ WindSpeed = WIND_SPEED })
 	end
 	SpeedInput.Text = string.format("Wind Speed: %.1f", WIND_SPEED)
 end)
@@ -74,8 +74,8 @@ PowerInput.FocusLost:Connect(function()
 	local newPower = tonumber(PowerInput.Text:match("[%d%.]+"))
 	if newPower then
 		WIND_POWER = math.clamp(newPower, 0, 10)
-		WindShake:UpdateAllObjectSettings({ Power = WIND_POWER })
-		WindShake:SetDefaultSettings({ Power = WIND_POWER })
+		WindShake:UpdateAllObjectSettings({ WindPower = WIND_POWER })
+		WindShake:SetDefaultSettings({ WindPower = WIND_POWER })
 	end
 	PowerInput.Text = string.format("Wind Power: %.1f", WIND_POWER)
 end)
@@ -103,8 +103,8 @@ DirInput.FocusLost:Connect(function()
 	if newDir then
 		WIND_DIRECTION = newDir
 		WindLines.Direction = newDir
-		WindShake:UpdateAllObjectSettings({ Direction = newDir })
-		WindShake:SetDefaultSettings({ Direction = newDir })
+		WindShake:UpdateAllObjectSettings({ WindDirection = newDir })
+		WindShake:SetDefaultSettings({ WindDirection = newDir })
 	end
 
 	DirInput.Text =
@@ -112,26 +112,26 @@ DirInput.FocusLost:Connect(function()
 end)
 DirInput.Parent = Gui
 
-local RadiusInput = Instance.new("TextBox")
-RadiusInput.Text = string.format("Shake Radius: %.1f", SHAKE_RADIUS)
-RadiusInput.PlaceholderText = "Input Radius"
-RadiusInput.BackgroundTransparency = 0.8
-RadiusInput.TextStrokeTransparency = 0.8
-RadiusInput.Size = UDim2.new(0.2, 0, 0, 20)
-RadiusInput.Position = UDim2.new(0, 5, 0.45, 75)
-RadiusInput.Font = Enum.Font.RobotoMono
-RadiusInput.TextXAlignment = Enum.TextXAlignment.Left
-RadiusInput.TextSize = 18
-RadiusInput.TextColor3 = Color3.new(1, 1, 1)
-RadiusInput.FocusLost:Connect(function()
-	local newRadius = tonumber(RadiusInput.Text:match("[%d%.]+"))
-	if newRadius then
-		SHAKE_RADIUS = math.clamp(newRadius, 5, 500)
-		WindShake.Radius = SHAKE_RADIUS
+local DistanceInput = Instance.new("TextBox")
+DistanceInput.Text = string.format("Shake Distance: %.1f", SHAKE_DISTANCE)
+DistanceInput.PlaceholderText = "Input Distance"
+DistanceInput.BackgroundTransparency = 0.8
+DistanceInput.TextStrokeTransparency = 0.8
+DistanceInput.Size = UDim2.new(0.2, 0, 0, 20)
+DistanceInput.Position = UDim2.new(0, 5, 0.45, 75)
+DistanceInput.Font = Enum.Font.RobotoMono
+DistanceInput.TextXAlignment = Enum.TextXAlignment.Left
+DistanceInput.TextSize = 18
+DistanceInput.TextColor3 = Color3.new(1, 1, 1)
+DistanceInput.FocusLost:Connect(function()
+	local newDistance = tonumber(DistanceInput.Text:match("[%d%.]+"))
+	if newDistance then
+		SHAKE_DISTANCE = math.clamp(newDistance, 5, 500)
+		WindShake.RenderDistance = SHAKE_DISTANCE
 	end
-	RadiusInput.Text = string.format("Shake Radius: %.1f", SHAKE_RADIUS)
+	DistanceInput.Text = string.format("Shake Distance: %.1f", SHAKE_DISTANCE)
 end)
-RadiusInput.Parent = Gui
+DistanceInput.Parent = Gui
 
 Gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 

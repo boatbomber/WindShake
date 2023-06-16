@@ -21,7 +21,7 @@ function module:Init(Settings)
 		module.UpdateConnection = nil
 	end
 
-	for _, WindLine in ipairs(module.UpdateQueue) do
+	for _, WindLine in module.UpdateQueue do
 		WindLine.Attachment0:Destroy()
 		WindLine.Attachment1:Destroy()
 		WindLine.Trail:Destroy()
@@ -43,7 +43,7 @@ function module:Init(Settings)
 
 		-- Update queue handler
 		debug.profilebegin("Wind Lines")
-		for i, WindLine in ipairs(module.UpdateQueue) do
+		for i, WindLine in module.UpdateQueue do
 			local AliveTime = Clock - WindLine.StartClock
 			if AliveTime >= WindLine.Lifetime then
 				-- Destroy the objects
@@ -85,7 +85,7 @@ function module:Cleanup()
 		module.UpdateConnection = nil
 	end
 
-	for _, WindLine in ipairs(module.UpdateQueue) do
+	for _, WindLine in module.UpdateQueue do
 		WindLine.Attachment0:Destroy()
 		WindLine.Attachment1:Destroy()
 		WindLine.Trail:Destroy()
