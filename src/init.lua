@@ -128,8 +128,8 @@ function WindShake:Update(deltaTime: number)
 	debug.profilebegin("Update")
 
 	local now = os.clock()
-	local slowerDeltaTime = deltaTime * 2
-	local step = math.min(1, deltaTime * 8)
+	local slowerDeltaTime = deltaTime * 3
+	local step = math.min(1, deltaTime * 5)
 
 	local objectTable = self._objectTable
 	local cframeTable = self._cframeTable
@@ -151,9 +151,11 @@ function WindShake:Update(deltaTime: number)
 		local objectCFrame = object.CFrame
 		local distance = (cameraPos - objectCFrame.Position).Magnitude
 		local distanceAlpha = (distance / distThreshold)
+		local distanceAlphaSq = distanceAlpha * distanceAlpha
 		local jitter = (1 / math.random(60, 120))
+		local elapsed = now - lastUpdate
 
-		if (now - lastUpdate) + jitter > slowerDeltaTime * (distanceAlpha * distanceAlpha) + maxRefreshRate then
+		if elapsed + jitter > (slowerDeltaTime * distanceAlphaSq) + maxRefreshRate then
 			objMeta.LastUpdate = now
 
 			local objSettings = objMeta.Settings
@@ -175,7 +177,7 @@ function WindShake:Update(deltaTime: number)
 					worldpivot * CFrame.Angles(rotX, rotY, rotZ)
 					+ objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)
 				) * offsetInverse,
-				step
+				math.clamp(step + (distanceAlphaSq), 0.1, 0.9)
 			)
 		end
 	end)
