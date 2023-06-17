@@ -67,12 +67,12 @@ function WindShake:Connect(funcName: string, event: RBXScriptSignal): RBXScriptC
 	end)
 end
 
-function WindShake:AddObjectShake(object: BasePart, settingsTable: WindShakeSettings?)
+function WindShake:AddObjectShake(object: BasePart | Bone, settingsTable: WindShakeSettings?)
 	if typeof(object) ~= "Instance" then
 		return
 	end
 
-	if not object:IsA("BasePart") then
+	if not (object:IsA("BasePart") or object:IsA("Bone")) then
 		return
 	end
 
@@ -100,7 +100,7 @@ function WindShake:AddObjectShake(object: BasePart, settingsTable: WindShakeSett
 	ObjectShakeAddedEvent:Fire(object)
 end
 
-function WindShake:RemoveObjectShake(object: BasePart)
+function WindShake:RemoveObjectShake(object: BasePart | Bone)
 	if typeof(object) ~= "Instance" then
 		return
 	end
@@ -125,6 +125,8 @@ end
 function WindShake:Update(deltaTime: number)
 	debug.profilebegin("WindShake")
 
+	local active = 0
+
 	debug.profilebegin("Update")
 
 	local now = os.clock()
@@ -146,7 +148,7 @@ function WindShake:Update(deltaTime: number)
 	local maxRefreshRate = self.MaxRefreshRate
 
 	-- Update objects in view at their respective refresh rates
-	self.VectorMap:ForEachObjectInView(camera, renderDistance, function(object)
+	self.VectorMap:ForEachObjectInView(camera, renderDistance, function(className: string, object: BasePart | Bone)
 		local objMeta = objectMetadata[object]
 		local lastUpdate = objMeta.LastUpdate or 0
 
@@ -163,15 +165,14 @@ function WindShake:Update(deltaTime: number)
 		end
 
 		objMeta.LastUpdate = now
+		active += 1
 
 		local objSettings = objMeta.Settings
 		local seed = objMeta.Seed
 		local amp = objSettings.WindPower * 0.1
 		local freq = now * (objSettings.WindSpeed * 0.08)
 
-		i += 1
-		partList[i] = object
-		cframeList[i] = objectCFrame:Lerp(
+		local goalCFrame = objectCFrame:Lerp(
 			(
 				(objMeta.Origin * objSettings.PivotOffset)
 					* CFrame.Angles(
@@ -183,9 +184,17 @@ function WindShake:Update(deltaTime: number)
 			) * objSettings.PivotOffsetInverse,
 			math.clamp(step + distanceAlphaSq, 0.1, 0.9)
 		)
+
+		if className == "Bone" then
+			(object :: Bone).CFrame = goalCFrame
+		else
+			i += 1
+			partList[i] = object
+			cframeList[i] = goalCFrame
+		end
 	end)
 
-	self.Active = i
+	self.Active = active
 
 	debug.profileend()
 

@@ -29,6 +29,8 @@ function VectorMap:_debugDrawVoxel(voxelKey: Vector3)
 end
 
 function VectorMap:AddObject(position: Vector3, object: any)
+	local className = object.ClassName
+
 	local voxelSize = self._voxelSize
 	local voxelKey = Vector3.new(
 		math.floor(position.X / voxelSize),
@@ -38,23 +40,32 @@ function VectorMap:AddObject(position: Vector3, object: any)
 
 	local voxel = self._voxels[voxelKey]
 
-	if not voxel then
-		self._voxels[voxelKey] = { object }
-		return voxelKey
+	if voxel == nil then
+		self._voxels[voxelKey] = {
+			[className] = { object }
+		}
+	elseif voxel[className] == nil then
+		voxel[className] = { object }
+	else
+		table.insert(voxel[className], object)
 	end
 
-	table.insert(voxel, object)
 	return voxelKey
 end
 
 function VectorMap:RemoveObject(voxelKey: Vector3, object: any)
 	local voxel = self._voxels[voxelKey]
 
-	if not voxel then
+	if voxel == nil then
 		return
 	end
 
-	for index, storedObject in voxel do
+	local className = object.ClassName
+	if voxel[className] == nil then
+		return
+	end
+
+	for index, storedObject in voxel[className] do
 		if storedObject == object then
 			-- Swap remove to avoid shifting
 			local n = #voxel
@@ -64,9 +75,14 @@ function VectorMap:RemoveObject(voxelKey: Vector3, object: any)
 		end
 	end
 
-	if #voxel == 0 then
+	-- Remove empty class group
+	if #voxel[className] == 0 then
+		voxel[className] = nil
+
 		-- Remove empty voxel
-		self._voxels[voxelKey] = nil
+		if next(voxel) == nil then
+			self._voxels[voxelKey] = nil
+		end
 	end
 end
 
@@ -74,7 +90,7 @@ function VectorMap:GetVoxel(voxelKey: Vector3)
 	return self._voxels[voxelKey]
 end
 
-function VectorMap:ForEachObjectInRegion(top: Vector3, bottom: Vector3, callback: (any) -> ())
+function VectorMap:ForEachObjectInRegion(top: Vector3, bottom: Vector3, callback: (string, any) -> ())
 	local voxelSize = self._voxelSize
 	local xMin, yMin, zMin = math.min(bottom.X, top.X), math.min(bottom.Y, top.Y), math.min(bottom.Z, top.Z)
 	local xMax, yMax, zMax = math.max(bottom.X, top.X), math.max(bottom.Y, top.Y), math.max(bottom.Z, top.Z)
@@ -87,15 +103,17 @@ function VectorMap:ForEachObjectInRegion(top: Vector3, bottom: Vector3, callback
 					continue
 				end
 
-				for _, object in voxel do
-					callback(object)
+				for className, objects in voxel do
+					for _, object in objects do
+						callback(className, object)
+					end
 				end
 			end
 		end
 	end
 end
 
-function VectorMap:ForEachObjectInView(camera: Camera, distance: number, callback: (any) -> ())
+function VectorMap:ForEachObjectInView(camera: Camera, distance: number, callback: (string, any) -> ())
 	local voxelSize = self._voxelSize
 	local cameraCFrame = camera.CFrame
 	local cameraPos = cameraCFrame.Position
@@ -201,8 +219,10 @@ function VectorMap:ForEachObjectInView(camera: Camera, distance: number, callbac
 					for fillZ = entry, exit do
 						local voxel = self._voxels[Vector3.new(x, y, fillZ)]
 						if voxel then
-							for _, object in voxel do
-								callback(object)
+							for className, objects in voxel do
+								for _, object in objects do
+									callback(className, object)
+								end
 							end
 						end
 					end
