@@ -114,8 +114,8 @@ function WindShake:RemoveObjectShake(object: BasePart | Bone)
 		objMeta.Settings:Destroy()
 		self.VectorMap:RemoveObject(objMeta.ChunkKey, object)
 
-		if object:IsA("BasePart") then
-			object.CFrame = objMeta.Origin
+		if object:IsA("BasePart") or object:IsA("Bone") then
+			(object :: any).CFrame = objMeta.Origin
 		end
 	end
 
