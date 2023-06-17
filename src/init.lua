@@ -167,6 +167,8 @@ function WindShake:Update(deltaTime: number)
 		objMeta.LastUpdate = now
 		active += 1
 
+		local isBone = className == "Bone"
+
 		local objSettings = objMeta.Settings
 		local seed = objMeta.Seed
 		local amp = objSettings.WindPower * 0.1
@@ -180,12 +182,12 @@ function WindShake:Update(deltaTime: number)
 						math.noise(freq, 0, -seed) * amp,
 						math.noise(freq, 0, seed + seed) * amp
 					)
-				+ objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)
+				+ objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * (amp * if isBone then 0.5 else 1))
 			) * objSettings.PivotOffsetInverse,
 			math.clamp(step + distanceAlphaSq, 0.1, 0.9)
 		)
 
-		if className == "Bone" then
+		if isBone then
 			(object :: Bone).CFrame = goalCFrame
 		else
 			i += 1
