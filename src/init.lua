@@ -85,7 +85,7 @@ function WindShake:AddObjectShake(object: BasePart | Bone, settingsTable: WindSh
 	end
 
 	metadata[object] = {
-		ChunkKey = self.VectorMap:AddObject(object.Position, object),
+		ChunkKey = self.VectorMap:AddObject(if object:IsA("Bone") then object.WorldPosition else object.Position, object),
 		Settings = Settings.new(object, DEFAULT_SETTINGS),
 
 		Seed = math.random(5000) * 0.32,
