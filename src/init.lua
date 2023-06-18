@@ -85,7 +85,10 @@ function WindShake:AddObjectShake(object: BasePart | Bone, settingsTable: WindSh
 	end
 
 	metadata[object] = {
-		ChunkKey = self.VectorMap:AddObject(if object:IsA("Bone") then object.WorldPosition else object.Position, object),
+		ChunkKey = self.VectorMap:AddObject(
+			if object:IsA("Bone") then object.WorldPosition else object.Position,
+			object
+		),
 		Settings = Settings.new(object, DEFAULT_SETTINGS),
 
 		Seed = math.random(5000) * 0.32,
@@ -136,7 +139,7 @@ function WindShake:Update(deltaTime: number)
 	local step = math.min(1, deltaTime * 5)
 
 	-- Reuse tables to avoid garbage collection
-	local i = 0
+	local bulkMoveIndex = 0
 	local partList = self._partList
 	local cframeList = self._cframeList
 	table.clear(partList)
@@ -176,47 +179,41 @@ function WindShake:Update(deltaTime: number)
 		local lowAmp = amp / 3
 		local freq = now * (objSettings.WindSpeed * 0.08)
 		local animValue = (math.noise(freq, 0, seed) + 0.4) * amp
+		local lerpAlpha = math.clamp(step + distanceAlphaSq, 0.1, 0.5)
 
 		local origin = objMeta.Origin * objSettings.PivotOffset
-
 		local windDirection = objSettings.WindDirection.Unit
 		local localWindDirection = origin:VectorToObjectSpace(windDirection)
 
 		if isBone then
-			(object :: Bone).Transform = (
-				CFrame.fromAxisAngle(
-					localWindDirection:Cross(Vector3.yAxis),
-					-animValue
-				)
-				* CFrame.Angles(
-					math.noise(seed, 0, freq) * lowAmp,
-					math.noise(seed, freq, 0) * lowAmp,
-					math.noise(freq, seed, 0) * lowAmp
-				)
-			) + (localWindDirection * animValue)
-		else
-			local goalCFrame = (
-				origin
-				* CFrame.fromAxisAngle(
-					localWindDirection:Cross(Vector3.yAxis),
-					-animValue
-				)
-				* CFrame.Angles(
-					math.noise(seed, 0, freq) * lowAmp,
-					math.noise(seed, freq, 0) * lowAmp,
-					math.noise(freq, seed, 0) * lowAmp
-				)
-				* objSettings.PivotOffsetInverse
-			) + (windDirection * animValue)
-
-			local lerpedCFrame = objectCFrame:Lerp(
-				goalCFrame,
-				math.clamp(step + distanceAlphaSq, 0.1, 0.9)
+			local bone: Bone = object :: Bone
+			bone.Transform = bone.Transform:Lerp(
+				(
+					CFrame.fromAxisAngle(localWindDirection:Cross(Vector3.yAxis), -animValue)
+					* CFrame.Angles(
+						math.noise(seed, 0, freq) * lowAmp,
+						math.noise(seed, freq, 0) * lowAmp,
+						math.noise(freq, seed, 0) * lowAmp
+					)
+				) + (localWindDirection * animValue),
+				lerpAlpha
 			)
-
-			i += 1
-			partList[i] = object
-			cframeList[i] = lerpedCFrame
+		else
+			bulkMoveIndex += 1
+			partList[bulkMoveIndex] = object
+			cframeList[bulkMoveIndex] = objectCFrame:Lerp(
+				(
+					origin
+					* CFrame.fromAxisAngle(localWindDirection:Cross(Vector3.yAxis), -animValue)
+					* CFrame.Angles(
+						math.noise(seed, 0, freq) * lowAmp,
+						math.noise(seed, freq, 0) * lowAmp,
+						math.noise(freq, seed, 0) * lowAmp
+					)
+					* objSettings.PivotOffsetInverse
+				) + (windDirection * animValue),
+				lerpAlpha
+			)
 		end
 	end)
 

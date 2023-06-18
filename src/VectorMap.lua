@@ -42,7 +42,7 @@ function VectorMap:AddObject(position: Vector3, object: any)
 
 	if voxel == nil then
 		self._voxels[voxelKey] = {
-			[className] = { object }
+			[className] = { object },
 		}
 	elseif voxel[className] == nil then
 		voxel[className] = { object }
