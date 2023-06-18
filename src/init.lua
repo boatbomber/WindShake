@@ -195,7 +195,7 @@ function WindShake:Update(deltaTime: number)
 						math.noise(seed, freq, 0) * lowAmp,
 						math.noise(freq, seed, 0) * lowAmp
 					)
-				) + (localWindDirection * animValue),
+				) + (localWindDirection * animValue * amp),
 				lerpAlpha
 			)
 		else
@@ -211,7 +211,7 @@ function WindShake:Update(deltaTime: number)
 						math.noise(freq, seed, 0) * lowAmp
 					)
 					* objSettings.PivotOffsetInverse
-				) + (windDirection * animValue),
+				) + (windDirection * animValue * (amp * 2)),
 				lerpAlpha
 			)
 		end
