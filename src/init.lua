@@ -181,7 +181,6 @@ function WindShake:Update(deltaTime: number)
 
 		local windDirection = objSettings.WindDirection.Unit
 		local localWindDirection = origin:VectorToObjectSpace(windDirection)
-		local translationalOffset = windDirection * animValue
 
 		if isBone then
 			(object :: Bone).Transform = (
@@ -194,7 +193,7 @@ function WindShake:Update(deltaTime: number)
 					math.noise(seed, freq, 0) * lowAmp,
 					math.noise(freq, seed, 0) * lowAmp
 				)
-			) + translationalOffset
+			) + (localWindDirection * animValue)
 		else
 			local goalCFrame = (
 				origin
@@ -208,7 +207,7 @@ function WindShake:Update(deltaTime: number)
 					math.noise(freq, seed, 0) * lowAmp
 				)
 				* objSettings.PivotOffsetInverse
-			) + translationalOffset
+			) + (windDirection * animValue)
 
 			local lerpedCFrame = objectCFrame:Lerp(
 				goalCFrame,
