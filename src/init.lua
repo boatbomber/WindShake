@@ -171,28 +171,42 @@ function WindShake:Update(deltaTime: number)
 
 		local objSettings = objMeta.Settings
 		local seed = objMeta.Seed
-		local amp = objSettings.WindPower * 0.1
+		local amp = objSettings.WindPower * 0.2
+		local lowAmp = amp / 3
 		local freq = now * (objSettings.WindSpeed * 0.08)
+		local animValue = (math.noise(freq, 0, seed) + 0.4) * amp
 
-		local goalCFrame = objectCFrame:Lerp(
-			(
-				(objMeta.Origin * objSettings.PivotOffset)
-					* CFrame.Angles(
-						math.noise(freq, 0, seed) * amp,
-						math.noise(freq, 0, -seed) * amp,
-						math.noise(freq, 0, seed + seed) * amp
-					)
-				+ objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * (amp * if isBone then 0.5 else 1))
-			) * objSettings.PivotOffsetInverse,
+		local origin = objMeta.Origin * objSettings.PivotOffset
+
+		local windDirection = objSettings.WindDirection.Unit
+		local localWindDirection = origin:VectorToObjectSpace(windDirection)
+		local translationalOffset = windDirection * animValue
+
+		local goalCFrame = (
+			origin
+			* CFrame.fromAxisAngle(
+				localWindDirection:Cross(Vector3.yAxis),
+				-animValue
+			)
+			* CFrame.Angles(
+				math.noise(seed, 0, freq) * lowAmp,
+				math.noise(seed, freq, 0) * lowAmp,
+				math.noise(freq, seed, 0) * lowAmp
+			)
+			* objSettings.PivotOffsetInverse
+		) + translationalOffset
+
+		local lerpedCFrame = objectCFrame:Lerp(
+			goalCFrame,
 			math.clamp(step + distanceAlphaSq, 0.1, 0.9)
 		)
 
 		if isBone then
-			(object :: Bone).CFrame = goalCFrame
+			(object :: Bone).CFrame = lerpedCFrame
 		else
 			i += 1
 			partList[i] = object
-			cframeList[i] = goalCFrame
+			cframeList[i] = lerpedCFrame
 		end
 	end)
 
