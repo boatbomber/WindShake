@@ -7,7 +7,7 @@ local SettingTypes = {
 	PivotOffset = "CFrame",
 }
 
-function Settings.new(object: Instance, base)
+function Settings.new(object: BasePart | Bone, base)
 	local inst = {}
 
 	-- Initial settings

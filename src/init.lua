@@ -67,12 +67,12 @@ function WindShake:Connect(funcName: string, event: RBXScriptSignal): RBXScriptC
 	end)
 end
 
-function WindShake:AddObjectShake(object: BasePart, settingsTable: WindShakeSettings?)
+function WindShake:AddObjectShake(object: BasePart | Bone, settingsTable: WindShakeSettings?)
 	if typeof(object) ~= "Instance" then
 		return
 	end
 
-	if not object:IsA("BasePart") then
+	if not (object:IsA("BasePart") or object:IsA("Bone")) then
 		return
 	end
 
@@ -85,11 +85,14 @@ function WindShake:AddObjectShake(object: BasePart, settingsTable: WindShakeSett
 	end
 
 	metadata[object] = {
-		ChunkKey = self.VectorMap:AddObject(object.Position, object),
+		ChunkKey = self.VectorMap:AddObject(
+			if object:IsA("Bone") then object.WorldPosition else object.Position,
+			object
+		),
 		Settings = Settings.new(object, DEFAULT_SETTINGS),
 
 		Seed = math.random(5000) * 0.32,
-		Origin = object.CFrame,
+		Origin = if object:IsA("Bone") then object.WorldCFrame else object.CFrame,
 		LastUpdate = os.clock(),
 	}
 
@@ -100,7 +103,7 @@ function WindShake:AddObjectShake(object: BasePart, settingsTable: WindShakeSett
 	ObjectShakeAddedEvent:Fire(object)
 end
 
-function WindShake:RemoveObjectShake(object: BasePart)
+function WindShake:RemoveObjectShake(object: BasePart | Bone)
 	if typeof(object) ~= "Instance" then
 		return
 	end
@@ -116,6 +119,8 @@ function WindShake:RemoveObjectShake(object: BasePart)
 
 		if object:IsA("BasePart") then
 			object.CFrame = objMeta.Origin
+		elseif object:IsA("Bone") then
+			object.WorldCFrame = objMeta.Origin
 		end
 	end
 
@@ -125,6 +130,8 @@ end
 function WindShake:Update(deltaTime: number)
 	debug.profilebegin("WindShake")
 
+	local active = 0
+
 	debug.profilebegin("Update")
 
 	local now = os.clock()
@@ -132,7 +139,7 @@ function WindShake:Update(deltaTime: number)
 	local step = math.min(1, deltaTime * 5)
 
 	-- Reuse tables to avoid garbage collection
-	local i = 0
+	local bulkMoveIndex = 0
 	local partList = self._partList
 	local cframeList = self._cframeList
 	table.clear(partList)
@@ -146,12 +153,13 @@ function WindShake:Update(deltaTime: number)
 	local maxRefreshRate = self.MaxRefreshRate
 
 	-- Update objects in view at their respective refresh rates
-	self.VectorMap:ForEachObjectInView(camera, renderDistance, function(object)
+	self.VectorMap:ForEachObjectInView(camera, renderDistance, function(className: string, object: BasePart | Bone)
 		local objMeta = objectMetadata[object]
 		local lastUpdate = objMeta.LastUpdate or 0
+		local isBone = className == "Bone"
 
 		-- Determine if the object refresh rate
-		local objectCFrame = object.CFrame
+		local objectCFrame = if isBone then (object :: Bone).WorldCFrame else object.CFrame
 		local distanceAlpha = ((cameraPos - objectCFrame.Position).Magnitude / renderDistance)
 		local distanceAlphaSq = distanceAlpha * distanceAlpha
 		local jitter = (1 / math.random(60, 120))
@@ -163,29 +171,53 @@ function WindShake:Update(deltaTime: number)
 		end
 
 		objMeta.LastUpdate = now
+		active += 1
 
 		local objSettings = objMeta.Settings
 		local seed = objMeta.Seed
-		local amp = objSettings.WindPower * 0.1
+		local amp = objSettings.WindPower * 0.2
+		local lowAmp = amp / 3
 		local freq = now * (objSettings.WindSpeed * 0.08)
+		local animValue = (math.noise(freq, 0, seed) + 0.4) * amp
+		local lerpAlpha = math.clamp(step + distanceAlphaSq, 0.1, 0.5)
 
-		i += 1
-		partList[i] = object
-		cframeList[i] = objectCFrame:Lerp(
-			(
-				(objMeta.Origin * objSettings.PivotOffset)
+		local origin = objMeta.Origin * objSettings.PivotOffset
+		local windDirection = objSettings.WindDirection.Unit
+		local localWindDirection = origin:VectorToObjectSpace(windDirection)
+
+		if isBone then
+			local bone: Bone = object :: Bone
+			bone.Transform = bone.Transform:Lerp(
+				(
+					CFrame.fromAxisAngle(localWindDirection:Cross(Vector3.yAxis), -animValue)
 					* CFrame.Angles(
-						math.noise(freq, 0, seed) * amp,
-						math.noise(freq, 0, -seed) * amp,
-						math.noise(freq, 0, seed + seed) * amp
+						math.noise(seed, 0, freq) * lowAmp,
+						math.noise(seed, freq, 0) * lowAmp,
+						math.noise(freq, seed, 0) * lowAmp
 					)
-				+ objSettings.WindDirection * ((0.5 + math.noise(freq, seed, seed)) * amp)
-			) * objSettings.PivotOffsetInverse,
-			math.clamp(step + distanceAlphaSq, 0.1, 0.9)
-		)
+				) + (localWindDirection * animValue * amp),
+				lerpAlpha
+			)
+		else
+			bulkMoveIndex += 1
+			partList[bulkMoveIndex] = object
+			cframeList[bulkMoveIndex] = objectCFrame:Lerp(
+				(
+					origin
+					* CFrame.fromAxisAngle(localWindDirection:Cross(Vector3.yAxis), -animValue)
+					* CFrame.Angles(
+						math.noise(seed, 0, freq) * lowAmp,
+						math.noise(seed, freq, 0) * lowAmp,
+						math.noise(freq, seed, 0) * lowAmp
+					)
+					* objSettings.PivotOffsetInverse
+				) + (windDirection * animValue * (amp * 2)),
+				lerpAlpha
+			)
+		end
 	end)
 
-	self.Active = i
+	self.Active = active
 
 	debug.profileend()
 
