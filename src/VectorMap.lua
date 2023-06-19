@@ -65,18 +65,19 @@ function VectorMap:RemoveObject(voxelKey: Vector3, object: any)
 		return
 	end
 
-	for index, storedObject in voxel[className] do
+	local classBucket = voxel[className]
+	for index, storedObject in classBucket do
 		if storedObject == object then
 			-- Swap remove to avoid shifting
-			local n = #voxel
-			voxel[index] = voxel[n]
-			voxel[n] = nil
+			local n = #classBucket
+			classBucket[index] = classBucket[n]
+			classBucket[n] = nil
 			break
 		end
 	end
 
-	-- Remove empty class group
-	if #voxel[className] == 0 then
+	-- Remove empty class bucket
+	if #classBucket == 0 then
 		voxel[className] = nil
 
 		-- Remove empty voxel
