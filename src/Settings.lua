@@ -16,9 +16,11 @@ function Settings.new(object: BasePart | Bone, base)
 	local WindSpeed = object:GetAttribute("WindSpeed")
 	local WindDirection = object:GetAttribute("WindDirection")
 
-	inst.WindPower = typeof(WindPower) == SettingTypes.WindPower and WindPower or base.WindPower
-	inst.WindSpeed = typeof(WindSpeed) == SettingTypes.WindSpeed and WindSpeed or base.WindSpeed
-	inst.WindDirection = typeof(WindDirection) == SettingTypes.WindDirection and WindDirection or base.WindDirection
+	inst.WindPower = if typeof(WindPower) == SettingTypes.WindPower then WindPower else base.WindPower
+	inst.WindSpeed = if typeof(WindSpeed) == SettingTypes.WindSpeed then WindSpeed else base.WindSpeed
+	inst.WindDirection = if typeof(WindDirection) == SettingTypes.WindDirection
+		then WindDirection.Unit
+		else base.WindDirection
 	inst.PivotOffset = if object:IsA("BasePart") then object.PivotOffset else (base.PivotOffset or CFrame.new())
 	inst.PivotOffsetInverse = inst.PivotOffset:Inverse()
 
@@ -26,17 +28,19 @@ function Settings.new(object: BasePart | Bone, base)
 
 	local PowerConnection = object:GetAttributeChangedSignal("WindPower"):Connect(function()
 		WindPower = object:GetAttribute("WindPower")
-		inst.WindPower = typeof(WindPower) == SettingTypes.WindPower and WindPower or base.WindPower
+		inst.WindPower = if typeof(WindPower) == SettingTypes.WindPower then WindPower else base.WindPower
 	end)
 
 	local SpeedConnection = object:GetAttributeChangedSignal("WindSpeed"):Connect(function()
 		WindSpeed = object:GetAttribute("WindSpeed")
-		inst.WindSpeed = typeof(WindSpeed) == SettingTypes.WindSpeed and WindSpeed or base.WindSpeed
+		inst.WindSpeed = if typeof(WindSpeed) == SettingTypes.WindSpeed then WindSpeed else base.WindSpeed
 	end)
 
 	local DirectionConnection = object:GetAttributeChangedSignal("WindDirection"):Connect(function()
 		WindDirection = object:GetAttribute("WindDirection")
-		inst.WindDirection = typeof(WindDirection) == SettingTypes.WindDirection and WindDirection or base.WindDirection
+		inst.WindDirection = if typeof(WindDirection) == SettingTypes.WindDirection
+			then WindDirection.Unit
+			else base.WindDirection
 	end)
 
 	local PivotConnection
