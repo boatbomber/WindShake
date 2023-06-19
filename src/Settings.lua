@@ -7,53 +7,54 @@ local SettingTypes = {
 	PivotOffset = "CFrame",
 }
 
-function Settings.new(object: BasePart | Bone, base)
-	local inst = {}
+function Settings.new(object: BasePart | Bone | ModuleScript)
+	local objectSettings = {}
 
 	-- Initial settings
-
 	local WindPower = object:GetAttribute("WindPower")
 	local WindSpeed = object:GetAttribute("WindSpeed")
 	local WindDirection = object:GetAttribute("WindDirection")
 
-	inst.WindPower = if typeof(WindPower) == SettingTypes.WindPower then WindPower else base.WindPower
-	inst.WindSpeed = if typeof(WindSpeed) == SettingTypes.WindSpeed then WindSpeed else base.WindSpeed
-	inst.WindDirection = if typeof(WindDirection) == SettingTypes.WindDirection
+	objectSettings.WindPower = if typeof(WindPower) == SettingTypes.WindPower then WindPower else nil
+	objectSettings.WindSpeed = if typeof(WindSpeed) == SettingTypes.WindSpeed then WindSpeed else nil
+	objectSettings.WindDirection = if typeof(WindDirection) == SettingTypes.WindDirection
 		then WindDirection.Unit
-		else base.WindDirection
-	inst.PivotOffset = if object:IsA("BasePart") then object.PivotOffset else (base.PivotOffset or CFrame.new())
-	inst.PivotOffsetInverse = inst.PivotOffset:Inverse()
+		else nil
+	objectSettings.PivotOffset = if object:IsA("BasePart") then object.PivotOffset else nil
+	objectSettings.PivotOffsetInverse = if typeof(objectSettings.PivotOffset) == "CFrame"
+		then objectSettings.PivotOffset:Inverse()
+		else nil
 
 	-- Update settings on event
 
 	local PowerConnection = object:GetAttributeChangedSignal("WindPower"):Connect(function()
 		WindPower = object:GetAttribute("WindPower")
-		inst.WindPower = if typeof(WindPower) == SettingTypes.WindPower then WindPower else base.WindPower
+		objectSettings.WindPower = if typeof(WindPower) == SettingTypes.WindPower then WindPower else nil
 	end)
 
 	local SpeedConnection = object:GetAttributeChangedSignal("WindSpeed"):Connect(function()
 		WindSpeed = object:GetAttribute("WindSpeed")
-		inst.WindSpeed = if typeof(WindSpeed) == SettingTypes.WindSpeed then WindSpeed else base.WindSpeed
+		objectSettings.WindSpeed = if typeof(WindSpeed) == SettingTypes.WindSpeed then WindSpeed else nil
 	end)
 
 	local DirectionConnection = object:GetAttributeChangedSignal("WindDirection"):Connect(function()
 		WindDirection = object:GetAttribute("WindDirection")
-		inst.WindDirection = if typeof(WindDirection) == SettingTypes.WindDirection
+		objectSettings.WindDirection = if typeof(WindDirection) == SettingTypes.WindDirection
 			then WindDirection.Unit
-			else base.WindDirection
+			else nil
 	end)
 
 	local PivotConnection
 	if object:IsA("BasePart") then
 		PivotConnection = object:GetPropertyChangedSignal("PivotOffset"):Connect(function()
-			inst.PivotOffset = object.PivotOffset
-			inst.PivotOffsetInverse = inst.PivotOffset:Inverse()
+			objectSettings.PivotOffset = object.PivotOffset
+			objectSettings.PivotOffsetInverse = objectSettings.PivotOffset:Inverse()
 		end)
 	end
 
 	-- Cleanup function for when shake is removed or object is unloaded
 
-	function inst:Destroy()
+	function objectSettings:Destroy()
 		PowerConnection:Disconnect()
 		SpeedConnection:Disconnect()
 		DirectionConnection:Disconnect()
@@ -61,10 +62,10 @@ function Settings.new(object: BasePart | Bone, base)
 			PivotConnection:Disconnect()
 		end
 
-		table.clear(inst)
+		table.clear(objectSettings)
 	end
 
-	return inst
+	return objectSettings
 end
 
 return Settings
