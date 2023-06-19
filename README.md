@@ -47,9 +47,20 @@ number WindShake.MaxRefreshRate
 ## Functions
 
 ```Lua
-function WindShake:Init()
+function WindShake:Init(config: {
+    MatchWorkspaceWind: boolean?,
+}?)
 ```
 *Initializes the wind shake logic and adds shake to all tagged objects*
+
+**Parameters:**
+- `config` *[Optional Dictionary]*
+
+    Configuration for the initialization
+    - `MatchWorkspaceWind` *[Optional Boolean]*
+
+        Whether to match the wind settings to the Workspace's GlobalWind setting. Default false
+
 
 **Returns:**
 * `void`
@@ -147,6 +158,16 @@ function WindShake:UpdateAllObjectSettings(Settings)
 
 - `Settings` *[Dictionary]*
 The settings to apply to all objects' shake (See below for Settings structure)
+
+**Returns:**
+* `void`
+
+```Lua
+function WindShake:MatchWorkspaceWind()
+```
+*Sets the wind settings to match the current workspace GlobalWind*
+
+> When `:Init()` is called with the `MatchWorkspaceWind` config set to true, this is called automatically
 
 **Returns:**
 * `void`

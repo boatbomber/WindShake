@@ -18,7 +18,9 @@ WindShake:SetDefaultSettings({
 	WindDirection = WIND_DIRECTION,
 	WindPower = WIND_POWER,
 })
-WindShake:Init()
+WindShake:Init({
+	MatchWorkspaceWind = true,
+})
 
 -- Demo dynamic settings
 
