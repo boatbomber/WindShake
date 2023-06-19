@@ -174,12 +174,20 @@ function WindShake:Update(deltaTime: number)
 		active += 1
 
 		local objSettings = objMeta.Settings
-		local seed = objMeta.Seed
 		local amp = objSettings.WindPower * 0.2
-		local lowAmp = amp / 3
+		if amp < 1e-5 then
+			return
+		end
+
 		local freq = now * (objSettings.WindSpeed * 0.08)
+		if freq < 1e-5 then
+			return
+		end
+
+		local seed = objMeta.Seed
 		local animValue = (math.noise(freq, 0, seed) + 0.4) * amp
 		local lerpAlpha = math.clamp(step + distanceAlphaSq, 0.1, 0.5)
+		local lowAmp = amp / 3
 
 		local origin = objMeta.Origin * objSettings.PivotOffset
 		local windDirection = objSettings.WindDirection.Unit
@@ -251,7 +259,7 @@ function WindShake:Resume()
 	ResumedEvent:Fire()
 end
 
-function WindShake:Init()
+function WindShake:Init(config: { MatchWorkspaceWind: boolean? })
 	if self.Initialized then
 		return
 	end
@@ -288,6 +296,14 @@ function WindShake:Init()
 		self:AddObjectShake(object)
 	end
 
+	-- Wire up workspace wind.
+	if config and config.MatchWorkspaceWind then
+		self:MatchWorkspaceWind()
+		self.WorkspaceWindConnection = workspace:GetPropertyChangedSignal("GlobalWind"):Connect(function()
+			self:MatchWorkspaceWind()
+		end)
+	end
+
 	-- Automatically start.
 	self:Resume()
 end
@@ -307,6 +323,11 @@ function WindShake:Cleanup()
 	if self.RemovedConnection then
 		self.RemovedConnection:Disconnect()
 		self.RemovedConnection = nil
+	end
+
+	if self.WorkspaceWindConnection then
+		self.WorkspaceWindConnection:Disconnect()
+		self.WorkspaceWindConnection = nil
 	end
 
 	table.clear(self.ObjectMetadata)
@@ -352,6 +373,30 @@ end
 
 function WindShake:SetDefaultSettings(settingsTable: WindShakeSettings)
 	self:UpdateObjectSettings(script, settingsTable)
+end
+
+function WindShake:MatchWorkspaceWind()
+	local workspaceWind = workspace.GlobalWind
+	local windDirection = workspaceWind.Unit
+	local windSpeed, windPower = 0, 0
+
+	local windMagnitude = workspaceWind.Magnitude
+	if windMagnitude > 0 then
+		windPower = if windMagnitude > 1 then math.log10(windMagnitude) + 0.2 else 0.3
+		windSpeed = if windMagnitude < 100 then (windMagnitude * 1.2) + 5 else 125
+	end
+
+	self:SetDefaultSettings({
+		WindDirection = windDirection,
+		WindSpeed = windSpeed,
+		WindPower = windPower,
+	})
+
+	self:UpdateAllObjectSettings({
+		WindDirection = windDirection,
+		WindSpeed = windSpeed,
+		WindPower = windPower,
+	})
 end
 
 return WindShake
