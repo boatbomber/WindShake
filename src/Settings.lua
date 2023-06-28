@@ -18,7 +18,7 @@ function Settings.new(object: BasePart | Bone | ModuleScript)
 	objectSettings.WindPower = if typeof(WindPower) == SettingTypes.WindPower then WindPower else nil
 	objectSettings.WindSpeed = if typeof(WindSpeed) == SettingTypes.WindSpeed then WindSpeed else nil
 	objectSettings.WindDirection = if typeof(WindDirection) == SettingTypes.WindDirection
-		then WindDirection.Unit
+		then (if WindDirection.Magnitude > 0 then WindDirection.Unit else Vector3.zero)
 		else nil
 	objectSettings.PivotOffset = if object:IsA("BasePart") then object.PivotOffset else nil
 	objectSettings.PivotOffsetInverse = if typeof(objectSettings.PivotOffset) == "CFrame"
@@ -40,7 +40,7 @@ function Settings.new(object: BasePart | Bone | ModuleScript)
 	local DirectionConnection = object:GetAttributeChangedSignal("WindDirection"):Connect(function()
 		WindDirection = object:GetAttribute("WindDirection")
 		objectSettings.WindDirection = if typeof(WindDirection) == SettingTypes.WindDirection
-			then WindDirection.Unit
+			then (if WindDirection.Magnitude > 0 then WindDirection.Unit else Vector3.zero)
 			else nil
 	end)
 
