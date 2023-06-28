@@ -1,7 +1,7 @@
 [package]
 name = "boatbomber/windshake"
 description = "High performance wind effect for leaves and foliage"
-version = "2.0.2"
+version = "2.0.3"
 license = "MIT"
 authors = ["boatbomber (https://boatbomber.com)"]
 registry = "https://github.com/upliftgames/wally-index"

@@ -179,6 +179,12 @@ function WindShake:Update(deltaTime: number)
 		active += 1
 
 		local objSettings = objMeta.Settings
+
+		local windDirection = (objSettings.WindDirection or sharedWindDirection)
+		if windDirection.Magnitude < 1e-5 then
+			return
+		end
+
 		local amp = (objSettings.WindPower or sharedWindPower) * 0.2
 		if amp < 1e-5 then
 			return
@@ -195,7 +201,6 @@ function WindShake:Update(deltaTime: number)
 		local lowAmp = amp / 3
 
 		local origin = objMeta.Origin * (objSettings.PivotOffset or CFrame.identity)
-		local windDirection = (objSettings.WindDirection or sharedWindDirection)
 		local localWindDirection = origin:VectorToObjectSpace(windDirection)
 
 		if isBone then
