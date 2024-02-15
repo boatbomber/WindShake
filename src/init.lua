@@ -269,7 +269,7 @@ function WindShake:Resume()
 	ResumedEvent:Fire()
 end
 
-function WindShake:Init(config: { MatchWorkspaceWind: boolean? })
+function WindShake:Init(config: { MatchWorkspaceWind: boolean? }?)
 	if self.Initialized then
 		return
 	end
