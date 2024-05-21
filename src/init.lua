@@ -86,7 +86,7 @@ local function Connect<Args...>(self: WindShake, event: RBXScriptSignal, callbac
 	end)
 end
 
-function WindShake.AddObjectShake(self: WindShake, object: Instance, settingsTable: WindShakeSettings?)
+function WindShake.AddObjectShake(self: WindShake, object: BasePart | Bone, settingsTable: WindShakeSettings?)
 	if typeof(object) ~= "Instance" then
 		return
 	end
@@ -127,7 +127,7 @@ function WindShake.AddObjectShake(self: WindShake, object: Instance, settingsTab
 	return
 end
 
-function WindShake.RemoveObjectShake(self: WindShake, object: Instance)
+function WindShake.RemoveObjectShake(self: WindShake, object: BasePart | Bone)
 	if typeof(object) ~= "Instance" then
 		return
 	end
@@ -271,7 +271,7 @@ function WindShake.Update(self: WindShake, deltaTime: number)
 
 	debug.profileend()
 
-	workspace:BulkMoveTo(partList :: { any }, cframeList, Enum.BulkMoveMode.FireCFrameChanged)
+	workspace:BulkMoveTo(partList, cframeList, Enum.BulkMoveMode.FireCFrameChanged)
 
 	debug.profileend()
 end
@@ -334,7 +334,9 @@ function WindShake.Init(self: WindShake, config: { MatchWorkspaceWind: boolean? 
 	self.RemovedConnection = Connect(self, windShakeRemoved, self.RemoveObjectShake)
 
 	for _, object in CollectionService:GetTagged(COLLECTION_TAG) do
-		self:AddObjectShake(object)
+		if object:IsA("BasePart") or object:IsA("Bone") then
+			self:AddObjectShake(object)
+		end
 	end
 
 	-- Wire up workspace wind.
