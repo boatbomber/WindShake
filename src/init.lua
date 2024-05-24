@@ -1,12 +1,13 @@
 --[=[
 
 WindShake- High performance wind effect for leaves and foliage
-by: boatbomber, CloneTrooper1019
+by: boatbomber, MaximumADHD
 
 Docs: https://devforum.roblox.com/t/wind-shake-high-performance-wind-effect-for-leaves-and-foliage/1039806/1
 
 --]=]
 
+--!strict
 local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 local Settings = require(script.Settings)
@@ -20,38 +21,58 @@ local COLLECTION_TAG = "WindShake" -- The CollectionService tag to be watched an
 
 local FALLBACK_SETTINGS = {
 	WindDirection = Vector3.new(0.5, 0, 0.5),
-	WindSpeed = 20,
 	WindPower = 0.5,
+	WindSpeed = 20,
 }
+
+type Settings = Settings.Class
 
 -----------------------------------------------------------------------------------------------------------------
 
-local ObjectShakeAddedEvent = Instance.new("BindableEvent")
-local ObjectShakeRemovedEvent = Instance.new("BindableEvent")
-local ObjectShakeUpdatedEvent = Instance.new("BindableEvent")
-local PausedEvent = Instance.new("BindableEvent")
-local ResumedEvent = Instance.new("BindableEvent")
+local Paused = Instance.new("BindableEvent")
+local Resumed = Instance.new("BindableEvent")
+local ObjectShakeAdded = Instance.new("BindableEvent")
+local ObjectShakeRemoved = Instance.new("BindableEvent")
+local ObjectShakeUpdated = Instance.new("BindableEvent")
+
 
 local WindShake = {
 	RenderDistance = 150,
 	MaxRefreshRate = 1 / 60,
 	SharedSettings = Settings.new(script),
 
-	ObjectMetadata = {},
-	VectorMap = VectorMap.new(),
+	ObjectMetadata = {} :: {
+		[Instance]: {
+			ChunkKey: Vector3,
+			Settings: Settings,
+			Seed: number,
+			Origin: CFrame,
+			LastUpdate: number,
+		}
+	},
 
+	VectorMap = VectorMap.new(),
 	Handled = 0,
 	Active = 0,
 
-	_partList = table.create(500),
-	_cframeList = table.create(500),
+	_partList = table.create(500) :: { any }, -- ('any' because Studio and Luau LSP disagree on the type)
+	_cframeList = table.create(500) :: { CFrame },
 
-	ObjectShakeAdded = ObjectShakeAddedEvent.Event,
-	ObjectShakeRemoved = ObjectShakeRemovedEvent.Event,
-	ObjectShakeUpdated = ObjectShakeUpdatedEvent.Event,
-	Paused = PausedEvent.Event,
-	Resumed = ResumedEvent.Event,
+	ObjectShakeAdded = ObjectShakeAdded.Event,
+	ObjectShakeRemoved = ObjectShakeRemoved.Event,
+	ObjectShakeUpdated = ObjectShakeUpdated.Event,
+	
+	Paused = Paused.Event,
+	Resumed = Resumed.Event,
+
+	Initialized = nil :: boolean?,
+	AddedConnection = nil :: RBXScriptConnection?,
+	UpdateConnection = nil :: RBXScriptConnection?,
+	RemovedConnection = nil :: RBXScriptConnection?,
+	WorkspaceWindConnection = nil :: RBXScriptConnection?,
 }
+
+type WindShake = typeof(WindShake)
 
 export type WindShakeSettings = {
 	WindDirection: Vector3?,
@@ -59,16 +80,13 @@ export type WindShakeSettings = {
 	WindPower: number?,
 }
 
-function WindShake:Connect(funcName: string, event: RBXScriptSignal): RBXScriptConnection
-	local callback = self[funcName]
-	assert(typeof(callback) == "function", "Unknown function: " .. funcName)
-
+local function Connect<Args...>(self: WindShake, event: RBXScriptSignal, callback: (self: WindShake, Args...) -> ()): RBXScriptConnection
 	return event:Connect(function(...)
 		return callback(self, ...)
 	end)
 end
 
-function WindShake:AddObjectShake(object: BasePart | Bone, settingsTable: WindShakeSettings?)
+function WindShake.AddObjectShake(self: WindShake, object: BasePart | Bone, settingsTable: WindShakeSettings?)
 	if typeof(object) ~= "Instance" then
 		return
 	end
@@ -81,8 +99,6 @@ function WindShake:AddObjectShake(object: BasePart | Bone, settingsTable: WindSh
 
 	if metadata[object] then
 		return
-	else
-		self.Handled += 1
 	end
 
 	metadata[object] = {
@@ -90,10 +106,14 @@ function WindShake:AddObjectShake(object: BasePart | Bone, settingsTable: WindSh
 			if object:IsA("Bone") then object.WorldPosition else object.Position,
 			object
 		),
-		Settings = Settings.new(object),
 
+		Settings = Settings.new(object),
 		Seed = math.random(5000) * 0.32,
-		Origin = if object:IsA("Bone") then object.WorldCFrame else object.CFrame,
+
+		Origin = if object:IsA("Bone")
+			then object.WorldCFrame
+			else object.CFrame,
+		
 		LastUpdate = os.clock(),
 	}
 
@@ -101,11 +121,18 @@ function WindShake:AddObjectShake(object: BasePart | Bone, settingsTable: WindSh
 		self:UpdateObjectSettings(object, settingsTable)
 	end
 
-	ObjectShakeAddedEvent:Fire(object)
+	ObjectShakeAdded:Fire(object)
+	self.Handled += 1
+
+	return
 end
 
-function WindShake:RemoveObjectShake(object: BasePart | Bone)
+function WindShake.RemoveObjectShake(self: WindShake, object: BasePart | Bone)
 	if typeof(object) ~= "Instance" then
+		return
+	end
+
+	if not (object:IsA("BasePart") or object:IsA("Bone")) then
 		return
 	end
 
@@ -125,10 +152,11 @@ function WindShake:RemoveObjectShake(object: BasePart | Bone)
 		end
 	end
 
-	ObjectShakeRemovedEvent:Fire(object)
+	ObjectShakeRemoved:Fire(object)
+	return
 end
 
-function WindShake:Update(deltaTime: number)
+function WindShake.Update(self: WindShake, deltaTime: number)
 	debug.profilebegin("WindShake")
 
 	local active = 0
@@ -150,12 +178,14 @@ function WindShake:Update(deltaTime: number)
 	local objectMetadata = self.ObjectMetadata
 	local camera = workspace.CurrentCamera
 	local cameraPos = camera.CFrame.Position
+
 	local renderDistance = self.RenderDistance
 	local maxRefreshRate = self.MaxRefreshRate
 	local sharedSettings = self.SharedSettings
-	local sharedWindPower = sharedSettings.WindPower
-	local sharedWindSpeed = sharedSettings.WindSpeed
-	local sharedWindDirection = sharedSettings.WindDirection
+
+	local sharedWindPower = assert(sharedSettings.WindPower)
+	local sharedWindSpeed = assert(sharedSettings.WindSpeed)
+	local sharedWindDirection = assert(sharedSettings.WindDirection)
 
 	-- Update objects in view at their respective refresh rates
 	self.VectorMap:ForEachObjectInView(camera, renderDistance, function(className: string, object: BasePart | Bone)
@@ -186,11 +216,13 @@ function WindShake:Update(deltaTime: number)
 		end
 
 		local amp = (objSettings.WindPower or sharedWindPower) * 0.2
+
 		if amp < 1e-5 then
 			return
 		end
 
 		local freq = now * ((objSettings.WindSpeed or sharedWindSpeed) * 0.08)
+
 		if freq < 1e-5 then
 			return
 		end
@@ -244,7 +276,7 @@ function WindShake:Update(deltaTime: number)
 	debug.profileend()
 end
 
-function WindShake:Pause()
+function WindShake.Pause(self: WindShake)
 	if self.UpdateConnection then
 		self.UpdateConnection:Disconnect()
 		self.UpdateConnection = nil
@@ -253,23 +285,22 @@ function WindShake:Pause()
 	self.Active = 0
 	self.Running = false
 
-	PausedEvent:Fire()
+	Paused:Fire()
 end
 
-function WindShake:Resume()
+function WindShake.Resume(self: WindShake)
 	if self.Running then
 		return
-	else
-		self.Running = true
 	end
 
 	-- Connect updater
-	self.UpdateConnection = self:Connect("Update", RunService.Heartbeat)
+	self.UpdateConnection = Connect(self, RunService.Heartbeat, self.Update)
+	self.Running = true
 
-	ResumedEvent:Fire()
+	Resumed:Fire()
 end
 
-function WindShake:Init(config: { MatchWorkspaceWind: boolean? }?)
+function WindShake.Init(self: WindShake, config: { MatchWorkspaceWind: boolean? }?)
 	if self.Initialized then
 		return
 	end
@@ -297,18 +328,21 @@ function WindShake:Init(config: { MatchWorkspaceWind: boolean? }?)
 
 	-- Wire up tag listeners.
 	local windShakeAdded = CollectionService:GetInstanceAddedSignal(COLLECTION_TAG)
-	self.AddedConnection = self:Connect("AddObjectShake", windShakeAdded)
+	self.AddedConnection = Connect(self, windShakeAdded, self.AddObjectShake)
 
 	local windShakeRemoved = CollectionService:GetInstanceRemovedSignal(COLLECTION_TAG)
-	self.RemovedConnection = self:Connect("RemoveObjectShake", windShakeRemoved)
+	self.RemovedConnection = Connect(self, windShakeRemoved, self.RemoveObjectShake)
 
 	for _, object in CollectionService:GetTagged(COLLECTION_TAG) do
-		self:AddObjectShake(object)
+		if object:IsA("BasePart") or object:IsA("Bone") then
+			self:AddObjectShake(object)
+		end
 	end
 
 	-- Wire up workspace wind.
 	if config and config.MatchWorkspaceWind then
 		self:MatchWorkspaceWind()
+
 		self.WorkspaceWindConnection = workspace:GetPropertyChangedSignal("GlobalWind"):Connect(function()
 			self:MatchWorkspaceWind()
 		end)
@@ -318,7 +352,7 @@ function WindShake:Init(config: { MatchWorkspaceWind: boolean? }?)
 	self:Resume()
 end
 
-function WindShake:Cleanup()
+function WindShake.Cleanup(self: WindShake)
 	if not self.Initialized then
 		return
 	end
@@ -348,7 +382,7 @@ function WindShake:Cleanup()
 	self.Initialized = false
 end
 
-function WindShake:UpdateObjectSettings(object: Instance, settingsTable: WindShakeSettings)
+function WindShake.UpdateObjectSettings(self: WindShake, object: Instance, settingsTable: WindShakeSettings)
 	if typeof(object) ~= "Instance" then
 		return
 	end
@@ -361,31 +395,33 @@ function WindShake:UpdateObjectSettings(object: Instance, settingsTable: WindSha
 		return
 	end
 
-	for key, value in settingsTable do
+	for key, value in pairs(settingsTable) do
 		object:SetAttribute(key, value)
 	end
 
-	ObjectShakeUpdatedEvent:Fire(object)
+	ObjectShakeUpdated:Fire(object)
+	return
 end
 
-function WindShake:UpdateAllObjectSettings(settingsTable: WindShakeSettings)
+function WindShake.UpdateAllObjectSettings(self: WindShake, settingsTable: WindShakeSettings)
 	if typeof(settingsTable) ~= "table" then
 		return
 	end
 
 	for obj, _objMeta in self.ObjectMetadata do
-		for key, value in settingsTable do
+		for key, value in pairs(settingsTable) do
 			obj:SetAttribute(key, value)
 		end
-		ObjectShakeUpdatedEvent:Fire(obj)
+
+		ObjectShakeUpdated:Fire(obj)
 	end
 end
 
-function WindShake:SetDefaultSettings(settingsTable: WindShakeSettings)
+function WindShake.SetDefaultSettings(self: WindShake, settingsTable: WindShakeSettings)
 	self:UpdateObjectSettings(script, settingsTable)
 end
 
-function WindShake:MatchWorkspaceWind()
+function WindShake.MatchWorkspaceWind(self: WindShake)
 	local workspaceWind = workspace.GlobalWind
 	local windDirection = workspaceWind.Unit
 	local windSpeed, windPower = 0, 0
