@@ -22,6 +22,13 @@ WindShake:Init({
 	MatchWorkspaceWind = true,
 })
 
+-- We told it to match the workspace wind, so it'll have computed
+-- new default settings based on workspace.GlobalWind.
+-- To make sure our dev guis match this, we'll read back the default settings.
+WIND_SPEED = script.WindShake:GetAttribute("WindSpeed")
+WIND_DIRECTION = script.WindShake:GetAttribute("WindDirection")
+WIND_POWER = script.WindShake:GetAttribute("WindPower")
+
 -- Demo dynamic settings
 
 local Gui = Instance.new("ScreenGui")
