@@ -11,3 +11,6 @@
 
 # VS Code files
 .vscode/*
+
+# Wally packages
+Packages/*

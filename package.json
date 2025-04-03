@@ -1,15 +1,15 @@
 {
-    "name": "@boatbomber/windshake",
-    "version": "2.0.3",
-    "license": "MIT",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/boatbomber/WindShake.git"
-    },
-    "contributors": [
-        "boatbomber"
-    ],
-    "bugs": {
-        "url": "https://github.com/boatbomber/WindShake/issues"
-    }
+  "name": "@boatbomber/windshake",
+  "version": "2.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/boatbomber/WindShake.git"
+  },
+  "contributors": [
+    "boatbomber"
+  ],
+  "bugs": {
+    "url": "https://github.com/boatbomber/WindShake/issues"
+  }
 }

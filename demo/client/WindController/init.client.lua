@@ -28,6 +28,7 @@ WindShake:Init({
 WIND_SPEED = script.WindShake:GetAttribute("WindSpeed")
 WIND_DIRECTION = script.WindShake:GetAttribute("WindDirection")
 WIND_POWER = script.WindShake:GetAttribute("WindPower")
+SHAKE_DISTANCE = WindShake.RenderDistance
 
 -- Demo dynamic settings
 
@@ -38,8 +39,9 @@ CountLabel.Text = string.format("Leaf Count: %d Active, %d Inactive, 77760 Total
 CountLabel.BackgroundTransparency = 0.3
 CountLabel.BackgroundColor3 = Color3.new()
 CountLabel.TextStrokeTransparency = 0.8
-CountLabel.Size = UDim2.new(0.6, 0, 0, 27)
-CountLabel.Position = UDim2.new(0.2, 0, 1, -35)
+CountLabel.Size = UDim2.new(0.6, 0, 0, 25 * 3 + 4)
+CountLabel.Position = UDim2.new(0.5, 0, 1, 0)
+CountLabel.AnchorPoint = Vector2.new(0.5, 1)
 CountLabel.Font = Enum.Font.RobotoMono
 CountLabel.TextSize = 25
 CountLabel.TextColor3 = Color3.new(1, 1, 1)
@@ -145,13 +147,21 @@ DistanceInput.Parent = Gui
 Gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
 task.defer(function()
-	while task.wait(0.1) do
+	while task.wait(1 / 15) do
 		local Active, Handled = WindShake.Active, WindShake.Handled
 		CountLabel.Text = string.format(
-			"Leaf Count: %d Active, %d Inactive, %d Not Streamed In (77760 Total)",
+			"Leaf Count: %d Active, %d Inactive, %d Not Streamed In (77760 Total)"
+				.. "\nDynamic Render Distance: %.1f, Avg Update Rate: %.1fHz"
+				.. "\nPerf: %.2fms search, %.2fms ingest, %d skippedSearch, %d skippedIngest",
 			Active,
 			Handled - Active,
-			77760 - Handled
+			77760 - Handled,
+			WindShake.CullThrottle._config._renderDistance,
+			1 / WindShake.CullThrottle._perfMetrics._averageObjectDeltaTime,
+			WindShake.CullThrottle._perfMetrics._searchDuration * 1000,
+			WindShake.CullThrottle._perfMetrics._ingestDuration * 1000,
+			WindShake.CullThrottle._perfMetrics._skippedSearch[1],
+			WindShake.CullThrottle._perfMetrics._skippedIngest[1]
 		)
 	end
 end)

@@ -1,21 +1,24 @@
 {
-    "name": "Wind Demo",
-    "tree": {
-      "$className": "DataModel",
+  "name": "Wind Demo",
+  "tree": {
+    "$className": "DataModel",
 
-      "StarterPlayer": {
-        "$className": "StarterPlayer",
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
 
-        "StarterPlayerScripts": {
-          "$className": "StarterPlayerScripts",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
 
-          "WindController": {
-            "$path": "demo/Client/WindController",
-            "WindShake": {
-              "$path": "src"
+        "WindController": {
+          "$path": "demo/Client/WindController",
+          "WindShake": {
+            "$path": "src",
+            "Packages": {
+              "$path": "Packages"
             }
           }
         }
       }
     }
   }
+}
