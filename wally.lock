@@ -4,10 +4,10 @@ registry = "test"
 
 [[package]]
 name = "boatbomber/cullthrottle"
-version = "0.1.0-rc.4"
+version = "0.1.0-rc.8"
 dependencies = []
 
 [[package]]
 name = "boatbomber/windshake"
 version = "2.1.0"
-dependencies = [["CullThrottle", "boatbomber/cullthrottle@0.1.0-rc.4"]]
+dependencies = [["CullThrottle", "boatbomber/cullthrottle@0.1.0-rc.8"]]
