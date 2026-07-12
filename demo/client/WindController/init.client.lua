@@ -28,7 +28,7 @@ WindShake:Init({
 WIND_SPEED = script.WindShake:GetAttribute("WindSpeed")
 WIND_DIRECTION = script.WindShake:GetAttribute("WindDirection")
 WIND_POWER = script.WindShake:GetAttribute("WindPower")
-SHAKE_DISTANCE = WindShake.RenderDistance
+SHAKE_DISTANCE = WindShake.RenderDistanceRange.Max
 
 -- Demo dynamic settings
 
@@ -138,7 +138,7 @@ DistanceInput.FocusLost:Connect(function()
 	local newDistance = tonumber(DistanceInput.Text:match("[%d%.]+"))
 	if newDistance then
 		SHAKE_DISTANCE = math.clamp(newDistance, 5, 500)
-		WindShake.RenderDistance = SHAKE_DISTANCE
+		WindShake.RenderDistanceRange = NumberRange.new(1, SHAKE_DISTANCE)
 	end
 	DistanceInput.Text = string.format("Shake Distance: %.1f", SHAKE_DISTANCE)
 end)
@@ -149,6 +149,7 @@ Gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 task.defer(function()
 	while task.wait(1 / 15) do
 		local Active, Handled = WindShake.Active, WindShake.Handled
+		local perfMetrics = WindShake.CullThrottle:GetPerformanceMetrics()
 		CountLabel.Text = string.format(
 			"Leaf Count: %d Active, %d Inactive, %d Not Streamed In (77760 Total)"
 				.. "\nDynamic Render Distance: %.1f, Avg Update Rate: %.1fHz"
@@ -156,12 +157,12 @@ task.defer(function()
 			Active,
 			Handled - Active,
 			77760 - Handled,
-			WindShake.CullThrottle._config._renderDistance,
-			1 / WindShake.CullThrottle._perfMetrics._averageObjectDeltaTime,
-			WindShake.CullThrottle._perfMetrics._searchDuration * 1000,
-			WindShake.CullThrottle._perfMetrics._ingestDuration * 1000,
-			WindShake.CullThrottle._perfMetrics._skippedSearch[1],
-			WindShake.CullThrottle._perfMetrics._skippedIngest[1]
+			WindShake.CullThrottle:GetRenderDistance(),
+			1 / perfMetrics.averageObjectDeltaTime,
+			perfMetrics.searchDuration * 1000,
+			perfMetrics.ingestDuration * 1000,
+			perfMetrics.skippedSearch,
+			perfMetrics.skippedIngest
 		)
 	end
 end)

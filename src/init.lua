@@ -47,9 +47,8 @@ local ObjectShakeRemoved = Instance.new("BindableEvent")
 local ObjectShakeUpdated = Instance.new("BindableEvent")
 
 local WindShake = {
-	RenderDistance = 200,
-	MaxRefreshRate = 1 / 60,
-	MinRefreshRate = 1 / 12,
+	RenderDistanceRange = NumberRange.new(30, 1000),
+	RefreshRates = NumberRange.new(12, 60),
 	SharedSettings = Settings.new(script),
 
 	ObjectMetadata = {} :: {
@@ -186,11 +185,8 @@ function WindShake.Update(self: WindShake, deltaTime: number)
 	-- Cache hot values
 	local objectMetadata = self.ObjectMetadata
 
-	local renderDistance = self.RenderDistance
+	local renderDistance = self.CullThrottle:GetRenderDistance()
 	local sharedSettings = self.SharedSettings
-
-	self.CullThrottle:SetRefreshRates(self.MaxRefreshRate, self.MinRefreshRate)
-	self.CullThrottle:SetRenderDistanceTarget(renderDistance)
 
 	local sharedWindPower = assert(sharedSettings.WindPower, "SharedSettings.WindPower is nil")
 	local sharedWindSpeed = assert(sharedSettings.WindSpeed, "SharedSettings.WindSpeed is nil")
@@ -324,8 +320,8 @@ function WindShake.Init(self: WindShake, config: { MatchWorkspaceWind: boolean? 
 	self:Cleanup()
 	self.Initialized = true
 
-	self.CullThrottle:SetRefreshRates(self.MaxRefreshRate, self.MinRefreshRate)
-	self.CullThrottle:SetRenderDistanceTarget(self.RenderDistance)
+	self.CullThrottle:SetRefreshRates(self.RefreshRates)
+	self.CullThrottle:SetRenderDistanceRange(self.RenderDistanceRange)
 
 	self.AddedConnection = Connect(self, self.CullThrottle.ObjectAdded, self.AddObjectShake)
 	self.RemovedConnection = Connect(self, self.CullThrottle.ObjectRemoved, self.RemoveObjectShake)
