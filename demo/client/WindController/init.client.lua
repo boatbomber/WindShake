@@ -28,6 +28,7 @@ WindShake:Init({
 WIND_SPEED = script.WindShake:GetAttribute("WindSpeed")
 WIND_DIRECTION = script.WindShake:GetAttribute("WindDirection")
 WIND_POWER = script.WindShake:GetAttribute("WindPower")
+SHAKE_DISTANCE = WindShake.RenderDistanceRange.Max
 
 -- Demo dynamic settings
 
@@ -38,8 +39,9 @@ CountLabel.Text = string.format("Leaf Count: %d Active, %d Inactive, 77760 Total
 CountLabel.BackgroundTransparency = 0.3
 CountLabel.BackgroundColor3 = Color3.new()
 CountLabel.TextStrokeTransparency = 0.8
-CountLabel.Size = UDim2.new(0.6, 0, 0, 27)
-CountLabel.Position = UDim2.new(0.2, 0, 1, -35)
+CountLabel.Size = UDim2.new(0.6, 0, 0, 25 * 3 + 4)
+CountLabel.Position = UDim2.new(0.5, 0, 1, 0)
+CountLabel.AnchorPoint = Vector2.new(0.5, 1)
 CountLabel.Font = Enum.Font.RobotoMono
 CountLabel.TextSize = 25
 CountLabel.TextColor3 = Color3.new(1, 1, 1)
@@ -136,7 +138,7 @@ DistanceInput.FocusLost:Connect(function()
 	local newDistance = tonumber(DistanceInput.Text:match("[%d%.]+"))
 	if newDistance then
 		SHAKE_DISTANCE = math.clamp(newDistance, 5, 500)
-		WindShake.RenderDistance = SHAKE_DISTANCE
+		WindShake.RenderDistanceRange = NumberRange.new(1, SHAKE_DISTANCE)
 	end
 	DistanceInput.Text = string.format("Shake Distance: %.1f", SHAKE_DISTANCE)
 end)
@@ -145,13 +147,22 @@ DistanceInput.Parent = Gui
 Gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
 task.defer(function()
-	while task.wait(0.1) do
+	while task.wait(1 / 15) do
 		local Active, Handled = WindShake.Active, WindShake.Handled
+		local perfMetrics = WindShake.CullThrottle:GetPerformanceMetrics()
 		CountLabel.Text = string.format(
-			"Leaf Count: %d Active, %d Inactive, %d Not Streamed In (77760 Total)",
+			"Leaf Count: %d Active, %d Inactive, %d Not Streamed In (77760 Total)"
+				.. "\nDynamic Render Distance: %.1f, Avg Update Rate: %.1fHz"
+				.. "\nPerf: %.2fms search, %.2fms ingest, %d skippedSearch, %d skippedIngest",
 			Active,
 			Handled - Active,
-			77760 - Handled
+			77760 - Handled,
+			WindShake.CullThrottle:GetRenderDistance(),
+			1 / perfMetrics.averageObjectDeltaTime,
+			perfMetrics.searchDuration * 1000,
+			perfMetrics.ingestDuration * 1000,
+			perfMetrics.skippedSearch,
+			perfMetrics.skippedIngest
 		)
 	end
 end)

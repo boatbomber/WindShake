@@ -8,10 +8,21 @@ Docs: https://devforum.roblox.com/t/wind-shake-high-performance-wind-effect-for-
 --]=]
 
 --!strict
-local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 local Settings = require(script.Settings)
-local VectorMap = require(script.VectorMap)
+
+local Packages = script:FindFirstChild("Packages") or script.Parent
+
+local CullThrottle
+local CullThrottleModule = Packages:FindFirstChild("CullThrottle")
+
+if CullThrottleModule and CullThrottleModule:IsA("ModuleScript") then
+	CullThrottle = require(CullThrottleModule)
+end
+
+if not CullThrottle then
+	error("Could not find required packages")
+end
 
 local COLLECTION_TAG = "WindShake" -- The CollectionService tag to be watched and mounted automatically
 
@@ -35,23 +46,22 @@ local ObjectShakeAdded = Instance.new("BindableEvent")
 local ObjectShakeRemoved = Instance.new("BindableEvent")
 local ObjectShakeUpdated = Instance.new("BindableEvent")
 
-
 local WindShake = {
-	RenderDistance = 150,
-	MaxRefreshRate = 1 / 60,
+	RenderDistanceRange = NumberRange.new(30, 1000),
+	RefreshRates = NumberRange.new(12, 60),
 	SharedSettings = Settings.new(script),
 
 	ObjectMetadata = {} :: {
 		[Instance]: {
-			ChunkKey: Vector3,
 			Settings: Settings,
 			Seed: number,
+			IsBone: boolean,
 			Origin: CFrame,
 			LastUpdate: number,
-		}
+		},
 	},
 
-	VectorMap = VectorMap.new(),
+	CullThrottle = CullThrottle.new(),
 	Handled = 0,
 	Active = 0,
 
@@ -61,7 +71,7 @@ local WindShake = {
 	ObjectShakeAdded = ObjectShakeAdded.Event,
 	ObjectShakeRemoved = ObjectShakeRemoved.Event,
 	ObjectShakeUpdated = ObjectShakeUpdated.Event,
-	
+
 	Paused = Paused.Event,
 	Resumed = Resumed.Event,
 
@@ -80,7 +90,11 @@ export type WindShakeSettings = {
 	WindPower: number?,
 }
 
-local function Connect<Args...>(self: WindShake, event: RBXScriptSignal, callback: (self: WindShake, Args...) -> ()): RBXScriptConnection
+local function Connect<Args...>(
+	self: WindShake,
+	event: RBXScriptSignal,
+	callback: (self: WindShake, Args...) -> ()
+): RBXScriptConnection
 	return event:Connect(function(...)
 		return callback(self, ...)
 	end)
@@ -102,24 +116,19 @@ function WindShake.AddObjectShake(self: WindShake, object: BasePart | Bone, sett
 	end
 
 	metadata[object] = {
-		ChunkKey = self.VectorMap:AddObject(
-			if object:IsA("Bone") then object.WorldPosition else object.Position,
-			object
-		),
-
 		Settings = Settings.new(object),
 		Seed = math.random(5000) * 0.32,
+		IsBone = object:IsA("Bone"),
+		Origin = if object:IsA("Bone") then object.WorldCFrame else object.CFrame,
 
-		Origin = if object:IsA("Bone")
-			then object.WorldCFrame
-			else object.CFrame,
-		
 		LastUpdate = os.clock(),
 	}
 
 	if settingsTable then
 		self:UpdateObjectSettings(object, settingsTable)
 	end
+
+	self.CullThrottle:AddObject(object)
 
 	ObjectShakeAdded:Fire(object)
 	self.Handled += 1
@@ -143,7 +152,7 @@ function WindShake.RemoveObjectShake(self: WindShake, object: BasePart | Bone)
 		self.Handled -= 1
 		metadata[object] = nil
 		objMeta.Settings:Destroy()
-		self.VectorMap:RemoveObject(objMeta.ChunkKey, object)
+		self.CullThrottle:RemoveObject(object)
 
 		if object:IsA("BasePart") then
 			object.CFrame = objMeta.Origin
@@ -164,7 +173,6 @@ function WindShake.Update(self: WindShake, deltaTime: number)
 	debug.profilebegin("Update")
 
 	local now = os.clock()
-	local slowerDeltaTime = deltaTime * 3
 	local step = math.min(1, deltaTime * 5)
 
 	-- Reuse tables to avoid garbage collection
@@ -176,36 +184,22 @@ function WindShake.Update(self: WindShake, deltaTime: number)
 
 	-- Cache hot values
 	local objectMetadata = self.ObjectMetadata
-	local camera = workspace.CurrentCamera
-	local cameraPos = camera.CFrame.Position
 
-	local renderDistance = self.RenderDistance
-	local maxRefreshRate = self.MaxRefreshRate
+	local renderDistance = self.CullThrottle:GetRenderDistance()
 	local sharedSettings = self.SharedSettings
 
-	local sharedWindPower = assert(sharedSettings.WindPower)
-	local sharedWindSpeed = assert(sharedSettings.WindSpeed)
-	local sharedWindDirection = assert(sharedSettings.WindDirection)
+	local sharedWindPower = assert(sharedSettings.WindPower, "SharedSettings.WindPower is nil")
+	local sharedWindSpeed = assert(sharedSettings.WindSpeed, "SharedSettings.WindSpeed is nil")
+	local sharedWindDirection = assert(sharedSettings.WindDirection, "SharedSettings.WindDirection is nil")
 
 	-- Update objects in view at their respective refresh rates
-	self.VectorMap:ForEachObjectInView(camera, renderDistance, function(className: string, object: BasePart | Bone)
+	for object, _, distance, cframe in self.CullThrottle:IterateObjectsToUpdate() do
 		local objMeta = objectMetadata[object]
-		local lastUpdate = objMeta.LastUpdate or 0
-		local isBone = className == "Bone"
+		local isBone = objMeta.IsBone
 
-		-- Determine if the object refresh rate
-		local objectCFrame = if isBone then (object :: Bone).WorldCFrame else object.CFrame
-		local distanceAlpha = ((cameraPos - objectCFrame.Position).Magnitude / renderDistance)
+		local distanceAlpha = (distance / renderDistance)
 		local distanceAlphaSq = distanceAlpha * distanceAlpha
-		local jitter = (1 / math.random(60, 120))
-		local refreshRate = (slowerDeltaTime * distanceAlphaSq) + maxRefreshRate
 
-		if (now - lastUpdate) + jitter <= refreshRate then
-			-- It is not yet time to update
-			return
-		end
-
-		objMeta.LastUpdate = now
 		active += 1
 
 		local objSettings = objMeta.Settings
@@ -251,7 +245,7 @@ function WindShake.Update(self: WindShake, deltaTime: number)
 		else
 			bulkMoveIndex += 1
 			partList[bulkMoveIndex] = object
-			cframeList[bulkMoveIndex] = objectCFrame:Lerp(
+			cframeList[bulkMoveIndex] = cframe:Lerp(
 				(
 					origin
 					* CFrame.fromAxisAngle(localWindDirection:Cross(Vector3.yAxis), -animValue)
@@ -265,7 +259,7 @@ function WindShake.Update(self: WindShake, deltaTime: number)
 				lerpAlpha
 			)
 		end
-	end)
+	end
 
 	self.Active = active
 
@@ -326,18 +320,14 @@ function WindShake.Init(self: WindShake, config: { MatchWorkspaceWind: boolean? 
 	self:Cleanup()
 	self.Initialized = true
 
+	self.CullThrottle:SetRefreshRates(self.RefreshRates)
+	self.CullThrottle:SetRenderDistanceRange(self.RenderDistanceRange)
+
+	self.AddedConnection = Connect(self, self.CullThrottle.ObjectAdded, self.AddObjectShake)
+	self.RemovedConnection = Connect(self, self.CullThrottle.ObjectRemoved, self.RemoveObjectShake)
+
 	-- Wire up tag listeners.
-	local windShakeAdded = CollectionService:GetInstanceAddedSignal(COLLECTION_TAG)
-	self.AddedConnection = Connect(self, windShakeAdded, self.AddObjectShake)
-
-	local windShakeRemoved = CollectionService:GetInstanceRemovedSignal(COLLECTION_TAG)
-	self.RemovedConnection = Connect(self, windShakeRemoved, self.RemoveObjectShake)
-
-	for _, object in CollectionService:GetTagged(COLLECTION_TAG) do
-		if object:IsA("BasePart") or object:IsA("Bone") then
-			self:AddObjectShake(object)
-		end
-	end
+	self.CullThrottle:CaptureTag(COLLECTION_TAG)
 
 	-- Wire up workspace wind.
 	if config and config.MatchWorkspaceWind then
@@ -375,7 +365,8 @@ function WindShake.Cleanup(self: WindShake)
 	end
 
 	table.clear(self.ObjectMetadata)
-	self.VectorMap:ClearAll()
+	self.CullThrottle:ReleaseTag(COLLECTION_TAG)
+	self.CullThrottle:RemoveObjectsWithTag(COLLECTION_TAG)
 
 	self.Handled = 0
 	self.Active = 0
